@@ -1,10 +1,11 @@
 inherited CnPalEnhanceForm: TCnPalEnhanceForm
-  Left = 340
-  Top = 195
+  Left = 341
+  Top = 101
   BorderStyle = bsDialog
   Caption = 'IDE Main Form Enhancements Wizard Settings'
-  ClientHeight = 435
-  ClientWidth = 448
+  ClientHeight = 463
+  ClientWidth = 488
+  OldCreateOrder = True
   OnCreate = FormCreate
   OnShow = FormShow
   PixelsPerInch = 96
@@ -12,14 +13,22 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
   object grpPalEnh: TGroupBox
     Left = 8
     Top = 8
-    Width = 433
-    Height = 145
+    Width = 470
+    Height = 172
     Caption = 'Component &Palette Extension Settings'
     TabOrder = 0
+    object lblShortcut: TLabel
+      Left = 24
+      Top = 119
+      Width = 45
+      Height = 13
+      Caption = 'Shortcut:'
+      FocusControl = hkCompFilter
+    end
     object chkAddTabs: TCheckBox
       Left = 8
       Top = 16
-      Width = 409
+      Width = 457
       Height = 17
       Caption = 'Add "Tabs" to Popup Menu(Delphi 5/BCB 5 only).'
       Checked = True
@@ -29,7 +38,7 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     object chkMultiLine: TCheckBox
       Left = 8
       Top = 36
-      Width = 337
+      Width = 457
       Height = 17
       Caption = 'Set Component Palette to Multi-line.'
       TabOrder = 1
@@ -37,7 +46,7 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     object chkDivTabMenu: TCheckBox
       Left = 8
       Top = 76
-      Width = 409
+      Width = 457
       Height = 17
       Caption = 'Wrap Tabs Menu when too Long(Delphi 7 Below Only).'
       TabOrder = 3
@@ -45,31 +54,44 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     object chkCompFilter: TCheckBox
       Left = 8
       Top = 96
-      Width = 409
+      Width = 457
       Height = 17
-      Caption = 'Add "Search Component" Button in Pallete(Delphi 7 Below Only).'
+      Caption = 
+        'Add "Search Component" Button in Palette(Delphi 7 Below or 2010 ' +
+        'Above Only).'
       TabOrder = 4
+      OnClick = UpdateControls
     end
     object chkButtonStyle: TCheckBox
       Left = 8
       Top = 56
-      Width = 337
+      Width = 457
       Height = 17
       Caption = 'Set Component Palette'#39's Style to Flat Button.'
       TabOrder = 2
     end
     object chkLockToolbar: TCheckBox
       Left = 8
-      Top = 116
-      Width = 409
+      Top = 144
+      Width = 457
       Height = 17
       Caption = 'Lock IDE Toolbar to Disable Drag.'
+      TabOrder = 6
+    end
+    object hkCompFilter: THotKey
+      Left = 120
+      Top = 116
+      Width = 121
+      Height = 19
+      HotKey = 32833
+      InvalidKeys = [hcNone, hcShift]
+      Modifiers = [hkAlt]
       TabOrder = 5
     end
   end
   object btnHelp: TButton
-    Left = 366
-    Top = 404
+    Left = 404
+    Top = 432
     Width = 75
     Height = 21
     Caption = '&Help'
@@ -77,8 +99,8 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     OnClick = btnHelpClick
   end
   object btnOK: TButton
-    Left = 206
-    Top = 404
+    Left = 244
+    Top = 432
     Width = 75
     Height = 21
     Caption = '&OK'
@@ -87,8 +109,8 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     TabOrder = 3
   end
   object btnCancel: TButton
-    Left = 286
-    Top = 404
+    Left = 324
+    Top = 432
     Width = 75
     Height = 21
     Cancel = True
@@ -98,15 +120,15 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
   end
   object grpMisc: TGroupBox
     Left = 8
-    Top = 156
-    Width = 433
+    Top = 184
+    Width = 470
     Height = 41
     Caption = 'O&ther Settings'
     TabOrder = 1
     object chkMenuLine: TCheckBox
       Left = 8
       Top = 16
-      Width = 409
+      Width = 449
       Height = 17
       Caption = 'Auto Display Shortcut of IDE Main Menu.(Delphi 7 only).'
       Checked = True
@@ -117,8 +139,8 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
   end
   object grpMenu: TGroupBox
     Left = 8
-    Top = 204
-    Width = 433
+    Top = 232
+    Width = 470
     Height = 193
     Caption = 'M&ain Form Settings'
     TabOrder = 2
@@ -161,7 +183,7 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
       OnClick = UpdateControls
     end
     object tlb1: TToolBar
-      Left = 205
+      Left = 225
       Top = 87
       Width = 23
       Height = 90
@@ -202,7 +224,7 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
     object lstSource: TListBox
       Left = 24
       Top = 88
-      Width = 177
+      Width = 197
       Height = 89
       ItemHeight = 13
       MultiSelect = True
@@ -211,9 +233,9 @@ inherited CnPalEnhanceForm: TCnPalEnhanceForm
       OnDblClick = btnAddClick
     end
     object lstDest: TListBox
-      Left = 232
+      Left = 252
       Top = 88
-      Width = 185
+      Width = 195
       Height = 89
       ItemHeight = 13
       MultiSelect = True

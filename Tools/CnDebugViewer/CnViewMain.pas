@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -42,6 +42,9 @@ uses
   Tabs, VirtualTrees, CnMdiView, CnLangMgr, CnWizLangID, CnTabSet,
   CnLangStorage, CnHashLangStorage, CnClasses, CnMsgClasses, CnTrayIcon,
   CnWizCfgUtils, CnUDP, CnDebugIntf, CnCRC32;
+
+const
+  WM_TAB_MAKE_VISIBLE = WM_USER + $108;
 
 type
   TCnFormSwitch = (fsAdd, fsUpdate, fsDelete, fsActiveChange);
@@ -255,6 +258,7 @@ type
     procedure OnUpdateStore(var Msg: TMessage); message WM_USER_UPDATE_STORE;
     procedure OnNewChildForm(var Msg: TMessage); message WM_USER_NEW_FORM;
     procedure OnHotKey(var Message: TMessage); message WM_HOTKEY;
+    procedure OnTabMakeVisible(var Message: TMessage); message WM_TAB_MAKE_VISIBLE;
   protected
     procedure DoCreate; override;
   public
@@ -360,12 +364,35 @@ begin
 end;
 
 procedure TCnMainViewer.FormCreate(Sender: TObject);
+var
+  Res: TCnCoreInitResults;
+  S: string;
 begin
-  InitializeCore;
   if GetCWUseCustomUserDir then
     LoadOptions(GetCWUserPath + SCnOptionFileName)
   else
     LoadOptions(_CnExtractFilePath(Application.ExeName) + SCnOptionFileName);
+
+  if CnViewerOptions.LocalSession then
+    ReInitLocalConsts;
+
+  Res := InitializeCore;
+  if Res <> ciOK then
+  begin
+    S := '';
+    case Res of
+      ciCreateEventFail:
+        S := 'Create Event Fail: ' + IntToStr(GetLastError);
+      ciCreateMutexFail:
+        S := 'Create Mutex Fail: ' + IntToStr(GetLastError);
+      ciCreateMapFail:
+        S := 'Create FileMapping Fail: ' + IntToStr(GetLastError);
+      ciMapViewFail:
+        S := 'MapView of File Fail: ' + IntToStr(GetLastError);
+    end;
+    statMain.Panels[3].Text := S;
+  end;
+
   UpdateFilterToMap;
   InitializeLang;
 
@@ -377,9 +404,7 @@ begin
 
   Screen.OnActiveFormChange := ActiveFormChanged;
   if SysDebugExists then
-    statMain.Panels[3].Text := SCnDebuggerExists
-  else
-    statMain.Panels[3].Text := '';
+    statMain.Panels[3].Text := SCnDebuggerExists;
 
   // 创建托盘栏图标
   tryIcon.Hint := Caption;
@@ -1190,7 +1215,10 @@ var
 begin
   P := tsSwitch.ScreenToClient(Mouse.CursorPos);
   if tsSwitch.ItemAtPos(P) >= 0 then
+  begin
     actSwtClose.Execute;
+    PostMessage(Handle, WM_TAB_MAKE_VISIBLE, 0, 0);
+  end;
 end;
 
 procedure TCnMainViewer.actAutoScrollExecute(Sender: TObject);
@@ -1248,6 +1276,11 @@ begin
     ADesc.Length := Len + SizeOf(TCnMsgAnnex) + SizeOf(Integer) + 1;
     AStore.AddMsgDesc(@ADesc);
   end;
+end;
+
+procedure TCnMainViewer.OnTabMakeVisible(var Message: TMessage);
+begin
+  tsSwitch.MakeTabVisible;
 end;
 
 end.

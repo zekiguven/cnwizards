@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -67,7 +67,7 @@ begin
   CL.AddTypeS('TCnCompilerKind', '( ckDelphi, ckBCB )');
   CL.AddTypeS('TCnCompiler', '( cnDelphi5, cnDelphi6, cnDelphi7, cnDelphi8, cnDelphi9, '
     + 'cnDelphi10, cnDelphi11, cnDelphi12, cnDelphi14, cnDelphi15, cnDelphi16, cnDelphi17, '
-    + 'cnDelphiXE4, cnDelphiXE5, cnDelphiXE6, cnDelphiXE7, cnDelphiXE8, cnDelphi10S, cnBCB5, cnBCB6 )');
+    + 'cnDelphiXE4, cnDelphiXE5, cnDelphiXE6, cnDelphiXE7, cnDelphiXE8, cnDelphi10S, cnDelphi101B, cnBCB5, cnBCB6 )');
   CL.AddConstantN('Compiler', 'TCnCompiler').SetInt(Ord(Compiler));
   CL.AddConstantN('CompilerKind', 'TCnCompilerKind').SetInt(Ord(CompilerKind));
   CL.AddConstantN('CompilerName', 'String').SetString(CompilerName);
@@ -97,6 +97,7 @@ begin
   CL.AddConstantN('_DELPHIXE7', 'Boolean').SetUInt(Ord(_DELPHIXE7));
   CL.AddConstantN('_DELPHIXE8', 'Boolean').SetUInt(Ord(_DELPHIXE8));
   CL.AddConstantN('_DELPHI10_SEATTLE', 'Boolean').SetUInt(Ord(_DELPHI10_SEATTLE));
+  CL.AddConstantN('_DELPHI101_BERLIN', 'Boolean').SetUInt(Ord(_DELPHI101_BERLIN));
 
   CL.AddConstantN('_DELPHI1_UP', 'Boolean').SetUInt(Ord(_DELPHI1_UP));
   CL.AddConstantN('_DELPHI2_UP', 'Boolean').SetUInt(Ord(_DELPHI2_UP));
@@ -120,6 +121,7 @@ begin
   CL.AddConstantN('_DELPHIXE7_UP', 'Boolean').SetUInt(Ord(_DELPHIXE7_UP));
   CL.AddConstantN('_DELPHIXE8_UP', 'Boolean').SetUInt(Ord(_DELPHIXE8_UP));
   CL.AddConstantN('_DELPHI10_SEATTLE_UP', 'Boolean').SetUInt(Ord(_DELPHI10_SEATTLE_UP));
+  CL.AddConstantN('_DELPHI101_BERLIN_UP', 'Boolean').SetUInt(Ord(_DELPHI101_BERLIN_UP));
 
   CL.AddConstantN('_BCB1', 'Boolean').SetUInt(Ord(_BCB1));
   CL.AddConstantN('_BCB3', 'Boolean').SetUInt(Ord(_BCB3));
@@ -140,6 +142,7 @@ begin
   CL.AddConstantN('_BCBXE7', 'Boolean').SetUInt(Ord(_BCBXE7));
   CL.AddConstantN('_BCBXE8', 'Boolean').SetUInt(Ord(_BCBXE8));
   CL.AddConstantN('_BCB10_SEATTLE', 'Boolean').SetUInt(Ord(_BCB10_SEATTLE));
+  CL.AddConstantN('_BCB101_BERLIN', 'Boolean').SetUInt(Ord(_BCB101_BERLIN));
 
   CL.AddConstantN('_BCB1_UP', 'Boolean').SetUInt(Ord(_BCB1_UP));
   CL.AddConstantN('_BCB3_UP', 'Boolean').SetUInt(Ord(_BCB3_UP));
@@ -160,6 +163,7 @@ begin
   CL.AddConstantN('_BCBXE7_UP', 'Boolean').SetUInt(Ord(_BCBXE7_UP));
   CL.AddConstantN('_BCBXE8_UP', 'Boolean').SetUInt(Ord(_BCBXE8_UP));
   CL.AddConstantN('_BCB10_SEATTLE_UP', 'Boolean').SetUInt(Ord(_BCB10_SEATTLE_UP));
+  CL.AddConstantN('_BCB101_BERLIN_UP', 'Boolean').SetUInt(Ord(_BCB101_BERLIN_UP));
 
   CL.AddConstantN('_KYLIX1', 'Boolean').SetUInt(Ord(_KYLIX1));
   CL.AddConstantN('_KYLIX2', 'Boolean').SetUInt(Ord(_KYLIX2));
@@ -182,6 +186,7 @@ begin
   CL.AddConstantN('_BDS15', 'Boolean').SetUInt(Ord(_BDS15));
   CL.AddConstantN('_BDS16', 'Boolean').SetUInt(Ord(_BDS16));
   CL.AddConstantN('_BDS17', 'Boolean').SetUInt(Ord(_BDS17));
+  CL.AddConstantN('_BDS18', 'Boolean').SetUInt(Ord(_BDS18));
 
   CL.AddConstantN('_BDS2_UP', 'Boolean').SetUInt(Ord(_BDS2_UP));
   CL.AddConstantN('_BDS3_UP', 'Boolean').SetUInt(Ord(_BDS3_UP));
@@ -198,6 +203,7 @@ begin
   CL.AddConstantN('_BDS15_UP', 'Boolean').SetUInt(Ord(_BDS15_UP));
   CL.AddConstantN('_BDS16_UP', 'Boolean').SetUInt(Ord(_BDS16_UP));
   CL.AddConstantN('_BDS17_UP', 'Boolean').SetUInt(Ord(_BDS17_UP));
+  CL.AddConstantN('_BDS18_UP', 'Boolean').SetUInt(Ord(_BDS18_UP));
 
   CL.AddConstantN('_COMPILER1', 'Boolean').SetUInt(Ord(_COMPILER1));
   CL.AddConstantN('_COMPILER2', 'Boolean').SetUInt(Ord(_COMPILER2));
@@ -222,6 +228,7 @@ begin
   CL.AddConstantN('_COMPILER21', 'Boolean').SetUInt(Ord(_COMPILER21));
   CL.AddConstantN('_COMPILER22', 'Boolean').SetUInt(Ord(_COMPILER22));
   CL.AddConstantN('_COMPILER23', 'Boolean').SetUInt(Ord(_COMPILER23));
+  CL.AddConstantN('_COMPILER24', 'Boolean').SetUInt(Ord(_COMPILER24));
 
   CL.AddConstantN('_COMPILER1_UP', 'Boolean').SetUInt(Ord(_COMPILER1_UP));
   CL.AddConstantN('_COMPILER2_UP', 'Boolean').SetUInt(Ord(_COMPILER2_UP));
@@ -246,6 +253,7 @@ begin
   CL.AddConstantN('_COMPILER21_UP', 'Boolean').SetUInt(Ord(_COMPILER21_UP));
   CL.AddConstantN('_COMPILER22_UP', 'Boolean').SetUInt(Ord(_COMPILER22_UP));
   CL.AddConstantN('_COMPILER23_UP', 'Boolean').SetUInt(Ord(_COMPILER23_UP));
+  CL.AddConstantN('_COMPILER24_UP', 'Boolean').SetUInt(Ord(_COMPILER24_UP));
 
   CL.AddConstantN('_SUPPORT_OTA_PROJECT_CONFIGURATION', 'Boolean').SetUInt(Ord(_SUPPORT_OTA_PROJECT_CONFIGURATION));
   CL.AddConstantN('_SUPPORT_CROSS_PLATFORM', 'Boolean').SetUInt(Ord(_SUPPORT_CROSS_PLATFORM));
@@ -255,10 +263,14 @@ begin
 
   CL.AddTypeS('TFormType', '( ftBinary, ftText, ftUnknown )');
   CL.AddTypeS('TCnCharSet', 'set of Char');
-  CL.AddDelphiFunction('Function CnIntToObject(AInt: Integer): TObject');
-  CL.AddDelphiFunction('Function CnObjectToInt(AObject: TObject): Integer');
-  CL.AddDelphiFunction('Function CnIntToInterface(AInt: Integer): IUnknown');
-  CL.AddDelphiFunction('Function CnInterfaceToInt(Intf: IUnknown): Integer');
+  CL.AddDelphiFunction('Function CnIntToObject(AInt : Integer) : TObject');
+  CL.AddDelphiFunction('Function CnObjectToInt(AObject : TObject) : Integer');
+  CL.AddDelphiFunction('Function CnIntToInterface(AInt : Integer) : IUnknown');
+  CL.AddDelphiFunction('Function CnInterfaceToInt(Intf : IUnknown) : Integer');
+  CL.AddDelphiFunction('Function CnGetClassFromClassName(const AClassName : string) : Integer');
+  CL.AddDelphiFunction('Function CnGetClassFromObject(AObject : TObject) : Integer');
+  CL.AddDelphiFunction('Function CnGetClassNameFromClass(AClass : Integer) : string');
+  CL.AddDelphiFunction('Function CnGetClassParentFromClass(AClass : Integer) : Integer');
   CL.AddDelphiFunction('Function CnWizLoadIcon( AIcon : TIcon; const ResName : string) : Boolean');
   CL.AddDelphiFunction('Function CnWizLoadBitmap( ABitmap : TBitmap; const ResName : string) : Boolean');
   CL.AddDelphiFunction('Function AddIconToImageList( AIcon : TIcon; ImageList : TCustomImageList) : Integer');
@@ -314,6 +326,9 @@ begin
   CL.AddDelphiFunction('Function CurrentIsDelphiSource : Boolean');
   CL.AddDelphiFunction('Function CurrentIsCSource : Boolean');
   CL.AddDelphiFunction('Function CurrentIsSource : Boolean');
+  CL.AddDelphiFunction('Function CurrentSourceIsDelphi : Boolean');
+  CL.AddDelphiFunction('Function CurrentSourceIsC : Boolean');
+  CL.AddDelphiFunction('Function CurrentSourceIsDelphiOrCSource : Boolean');
   CL.AddDelphiFunction('Function CurrentIsForm : Boolean');
   CL.AddDelphiFunction('Function ExtractUpperFileExt( const FileName : string) : string');
   CL.AddDelphiFunction('Procedure AssertIsDprOrPas( const FileName : string)');
@@ -351,6 +366,7 @@ begin
   CL.AddDelphiFunction('Function FindControlByClassName( AParent : TWinControl; const AClassName : string) : TControl');
   CL.AddDelphiFunction('Function CnOtaGetEditBuffer : IOTAEditBuffer');
   CL.AddDelphiFunction('Function CnOtaGetEditPosition : IOTAEditPosition');
+  CL.AddDelphiFunction('Function CnOtaGetTopOpenedEditViewFromFileName( const FileName : string; ForceOpen : Boolean) : IOTAEditView');
   CL.AddDelphiFunction('Function CnOtaGetTopMostEditView( SourceEditor : IOTASourceEditor) : IOTAEditView;');
   CL.AddDelphiFunction('Function CnOtaGetTopMostEditActions : IOTAEditActions');
   CL.AddDelphiFunction('Function CnOtaGetCurrentModule : IOTAModule');
@@ -358,6 +374,8 @@ begin
   CL.AddDelphiFunction('Function CnOtaGetFileEditorForModule( Module : IOTAModule; Index : Integer) : IOTAEditor');
   CL.AddDelphiFunction('Function CnOtaGetFormEditorFromModule( const Module : IOTAModule) : IOTAFormEditor');
   CL.AddDelphiFunction('Function CnOtaGetCurrentFormEditor : IOTAFormEditor');
+  CL.AddDelphiFunction('Function CnOtaGetDesignContainerFromEditor( FormEditor : IOTAFormEditor): TWinControl');
+  CL.AddDelphiFunction('Function CnOtaGetCurrentDesignContainer : TWinControl');
   CL.AddDelphiFunction('Function CnOtaGetSelectedControlFromCurrentForm( List: TList): Boolean');
   CL.AddDelphiFunction('Function CnOtaShowFormForModule( const Module : IOTAModule) : Boolean');
   CL.AddDelphiFunction('Procedure CnOtaShowDesignerForm');
@@ -510,6 +528,10 @@ begin
   S.RegisterDelphiFunction(@CnObjectToInt, 'CnObjectToInt', cdRegister);
   S.RegisterDelphiFunction(@CnIntToInterface, 'CnIntToInterface', cdRegister);
   S.RegisterDelphiFunction(@CnInterfaceToInt, 'CnInterfaceToInt', cdRegister);
+  S.RegisterDelphiFunction(@CnGetClassFromClassName, 'CnGetClassFromClassName', cdRegister);
+  S.RegisterDelphiFunction(@CnGetClassFromObject, 'CnGetClassFromObject', cdRegister);
+  S.RegisterDelphiFunction(@CnGetClassNameFromClass, 'CnGetClassNameFromClass', cdRegister);
+  S.RegisterDelphiFunction(@CnGetClassParentFromClass, 'CnGetClassParentFromClass', cdRegister);
   S.RegisterDelphiFunction(@CnWizLoadIcon, 'CnWizLoadIcon', cdRegister);
   S.RegisterDelphiFunction(@CnWizLoadBitmap, 'CnWizLoadBitmap', cdRegister);
   S.RegisterDelphiFunction(@AddIconToImageList, 'AddIconToImageList', cdRegister);
@@ -564,6 +586,9 @@ begin
   S.RegisterDelphiFunction(@CurrentIsDelphiSource, 'CurrentIsDelphiSource', cdRegister);
   S.RegisterDelphiFunction(@CurrentIsCSource, 'CurrentIsCSource', cdRegister);
   S.RegisterDelphiFunction(@CurrentIsSource, 'CurrentIsSource', cdRegister);
+  S.RegisterDelphiFunction(@CurrentSourceIsDelphi, 'CurrentSourceIsDelphi', cdRegister);
+  S.RegisterDelphiFunction(@CurrentSourceIsC, 'CurrentSourceIsC', cdRegister);
+  S.RegisterDelphiFunction(@CurrentSourceIsDelphiOrCSource, 'CurrentSourceIsDelphiOrCSource', cdRegister);
   S.RegisterDelphiFunction(@CurrentIsForm, 'CurrentIsForm', cdRegister);
   S.RegisterDelphiFunction(@ExtractUpperFileExt, 'ExtractUpperFileExt', cdRegister);
   S.RegisterDelphiFunction(@AssertIsDprOrPas, 'AssertIsDprOrPas', cdRegister);
@@ -598,6 +623,7 @@ begin
   S.RegisterDelphiFunction(@FindControlByClassName, 'FindControlByClassName', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetEditBuffer, 'CnOtaGetEditBuffer', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetEditPosition, 'CnOtaGetEditPosition', cdRegister);
+  S.RegisterDelphiFunction(@CnOtaGetTopOpenedEditViewFromFileName, 'CnOtaGetTopOpenedEditViewFromFileName', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetTopMostEditView_P, 'CnOtaGetTopMostEditView', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetTopMostEditActions, 'CnOtaGetTopMostEditActions', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetCurrentModule, 'CnOtaGetCurrentModule', cdRegister);
@@ -605,6 +631,8 @@ begin
   S.RegisterDelphiFunction(@CnOtaGetFileEditorForModule, 'CnOtaGetFileEditorForModule', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetFormEditorFromModule, 'CnOtaGetFormEditorFromModule', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetCurrentFormEditor, 'CnOtaGetCurrentFormEditor', cdRegister);
+  S.RegisterDelphiFunction(@CnOtaGetDesignContainerFromEditor, 'CnOtaGetDesignContainerFromEditor', cdRegister);
+  S.RegisterDelphiFunction(@CnOtaGetCurrentDesignContainer, 'CnOtaGetCurrentDesignContainer', cdRegister);
   S.RegisterDelphiFunction(@CnOtaGetSelectedControlFromCurrentForm, 'CnOtaGetSelectedControlFromCurrentForm', cdRegister);
   S.RegisterDelphiFunction(@CnOtaShowFormForModule, 'CnOtaShowFormForModule', cdRegister);
   S.RegisterDelphiFunction(@CnOtaShowDesignerForm, 'CnOtaShowDesignerForm', cdRegister);

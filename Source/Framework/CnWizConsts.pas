@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -59,7 +59,7 @@ const
   SCnWizardDesc = 'CnPack IDE Wizards for Delphi/C++Builder/BDS/Rad Studio' + #13#10 +
                   '' + #13#10 +
                   'Version: ' + SCnWizardFullVersion + #13#10 +
-                  'Copyright: 2001-2015 CnPack Team' + #13#10 +
+                  'Copyright: 2001-2016 CnPack Team' + #13#10 +
                   '' + #13#10 +
                   'This is a freeware, you can use it freely without any fee. ' +
                   'You can copy or distribute it in any form, without any fee. ' +
@@ -234,6 +234,11 @@ resourcestring
   SCnProjExtFileReopen = 'CnProjExtFileReopen';
   SCnProjExtDirBuilder = 'CnProjExtDirBuilder';
 
+  SCnProjExtPasIntf = 'interface';
+  SCnProjExtPasImpl = 'implementation';
+  SCnProjExtCppHead = 'h';
+  SCnProjExtCppSource = 'cpp';
+
   // CnFilesSnapshotWizard
   SCnProjExtFilesSnapshotAdd = 'CnProjExtFilesSnapshotAdd';
   SCnProjExtFilesSnapshotManage = 'CnProjExtFilesSnapshotManage';
@@ -277,6 +282,7 @@ resourcestring
   SCnPaletteTabsMenuName = 'CnPaletteTabs';
   SCnPaletteMutiLineMenuName = 'CnPaletteMultiLine';
   SCnPaletteSearchCompMenuName = 'CnPaletteSearchComp';
+  SCnPaletteSettingsMenuName = 'CnPaletteSettings';
   SCnLockToolbarMenuName = 'CnLockToolBar';
   SCnWizMenuName = 'CnWizToolMenu';
   SCnWizOptionMenuName = 'CnWizToolOptionMenu';
@@ -1188,6 +1194,7 @@ var
   SCnLockToolbarMenuCaption: string = '&Lock Toolbar';
   SCnPaletteMoreCaption: string = '&More...';
   SCnSearchComponent: string = 'Search Component';
+  SCnPalSettingsCaption: string = 'Setti&ngs...';
   SCnComponentDetailFmt: string = 'ClassName: %s' + #13#10 + 'Unit: %s' + #13#10 + 'Tab: %s' + #13#10#13#10 + 'Inheritance List: ' + #13#10#13#10;
 
   // CnVerEnhanceWizard
@@ -1258,6 +1265,8 @@ var
   SCnProjExtFileIsReadOnly: string = 'The File is ReadOnly, Set its Attribute to Normal and Continue to Convert It?';
   SCnProjExtCreatePrjListError: string = 'Create ProjectList Error!';
   SCnProjExtErrorInUse: string = 'Can NOT Find these Files.' + #13#10 + 'Maybe They''re in Different Projects.';
+  SCnProjExtUsesNoPasPosition: string = 'Can NOT Find a Position for interface/implementation uses Inserting.';
+  SCnProjExtUsesNoCppPosition: string = 'Can NOT Find a Position for Inserting Header File Including.';
   SCnProjExtAddExtension: string = 'Add File Extension';
   SCnProjExtAddNewText: string = 'Enter a File Extension:';
   SCnProjExtCleaningComplete: string = 'Cleaning complete. ' + #13#10 + 'Total delete %d files, ' + #13#10 + '%s bytes.';
@@ -1435,6 +1444,7 @@ var
   SCnInputHelperSymbolKindError: string = 'Please select the Symbol Type!';
   SCnInputHelperUserMacroCaption: string = 'User-defined Macro';
   SCnInputHelperUserMacroPrompt: string = 'Please Input Macro Name:';
+  SCnInputHelperDisableCodeCompletionSucc: string = 'IDE Code Completion Disabled.';
   SCnKeywordDefault: string = 'Unchange';
   SCnKeywordLower: string = 'Lower case';
   SCnKeywordUpper: string = 'Upper case';

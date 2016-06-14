@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -44,6 +44,12 @@ unit CnWizManager;
 interface
 
 {$I CnWizards.inc}
+
+{$IFDEF IDE_INTEGRATE_CASTALIA}
+  {$IFNDEF DELPHI101_BERLIN_UP}
+    {$DEFINE CASTALIA_KEYMAPPING_CONFLICT_BUG}
+  {$ENDIF}
+{$ENDIF}
 
 uses
   Windows, Messages, Classes, Graphics, Controls, Sysutils, Menus, ActnList,
@@ -90,10 +96,15 @@ type
     FWizAbout: TCnMenuWizard;
     FOffSet: array[0..3] of Integer;
     FSettingsLoaded: Boolean;
+    FMainFormOnShow: TNotifyEvent;
   {$IFDEF BDS}
     FSplashBmp: TBitmap;
     FAboutBmp: TBitmap;
   {$ENDIF}
+    procedure InstallMainFormOnShowHook;
+    procedure OnMainFormOnShow(Sender: TObject);
+    procedure DoLaterLoad(Sender: TObject);
+
     procedure CreateIDEMenu;
     procedure InstallIDEMenu;
     procedure FreeMenu;
@@ -111,7 +122,7 @@ type
     procedure SetTipShowing;
     procedure ShowTipofDay(Sender: TObject);
     procedure CheckIDEVersion;
-{$IFDEF IDE_INTEGRATE_CASTALIA}
+{$IFDEF CASTALIA_KEYMAPPING_CONFLICT_BUG}
     procedure CheckKeyMappingEnhModulesSequence;
 {$ENDIF}
     function GetWizards(Index: Integer): TCnBaseWizard;
@@ -366,6 +377,39 @@ begin
 {$ENDIF}
 end;
 
+
+procedure TCnWizardMgr.InstallMainFormOnShowHook;
+begin
+  FMainFormOnShow := Application.MainForm.OnShow;
+  Application.MainForm.OnShow := OnMainFormOnShow;
+end;
+
+procedure TCnWizardMgr.OnMainFormOnShow(Sender: TObject);
+begin
+  Application.MainForm.OnShow := FMainFormOnShow;
+  CnWizNotifierServices.ExecuteOnApplicationIdle(DoLaterLoad);
+end;
+
+procedure TCnWizardMgr.DoLaterLoad(Sender: TObject);
+var
+  I: Integer;
+begin
+{$IFDEF DEBUG}
+  CnDebugger.LogEnter('DoLaterLoad');
+{$ENDIF}
+
+  for I := 0 to WizardCount - 1 do
+  try
+    Wizards[I].LaterLoaded;
+  except
+    DoHandleException(Wizards[I].ClassName + '.OnLaterLoad');
+  end;
+
+{$IFDEF DEBUG}
+  CnDebugger.LogLeave('DoLaterLoad');
+{$ENDIF}
+end;
+
 // 类构造器
 constructor TCnWizardMgr.Create;
 begin
@@ -389,10 +433,12 @@ begin
 
   CnTranslateConsts(nil);
 
-{$IFDEF IDE_INTEGRATE_CASTALIA}
+{$IFDEF CASTALIA_KEYMAPPING_CONFLICT_BUG}
   CheckKeyMappingEnhModulesSequence;
 {$ENDIF}
 {$ENDIF}
+
+  InstallMainFormOnShowHook;
 
   WizShortCutMgr.BeginUpdate;
   CnListBeginUpdate;
@@ -1365,7 +1411,7 @@ begin
   Result := [wsEnabled];
 end;
 
-{$IFDEF IDE_INTEGRATE_CASTALIA}
+{$IFDEF CASTALIA_KEYMAPPING_CONFLICT_BUG}
 
 procedure TCnWizardMgr.CheckKeyMappingEnhModulesSequence;
 const

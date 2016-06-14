@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -308,7 +308,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    function IndexOfEditor(EditControl: TControl): Integer;
+    function IndexOfEditor(EditControl: TControl): Integer; overload;
+    function IndexOfEditor(EditView: IOTAEditView): Integer; overload;
     function GetEditorObject(EditControl: TControl): TEditorObject;
     property Editors[Index: Integer]: TEditorObject read GetEditors;
     property EditorCount: Integer read GetEditorCount;
@@ -330,6 +331,8 @@ type
     {* 返回编辑器的画布属性}
     function GetEditView(EditControl: TControl): IOTAEditView;
     {* 返回指定编辑器当前关联的 EditView }
+    function GetEditControl(EditView: IOTAEditView): TControl;
+    {* 返回指定 EditView 当前关联的编辑器 }
     function GetTopMostEditControl: TControl;
     {* 返回当前最前端的 EditControl}
     function GetEditViewFromTabs(TabControl: TXTabControl; Index: Integer):
@@ -338,7 +341,10 @@ type
     procedure GetAttributeAtPos(EditControl: TControl; const EdPos: TOTAEditPos;
       IncludeMargin: Boolean; var Element, LineFlag: Integer);
     {* 返回指定位置的高亮属性，用于替换 IOTAEditView 的函数，后者可能会导致编辑区问题。
-       此指定位置可由 CursorPos 而来，是 utf8 的字节位置（一个汉字跨 3 列 }
+       此指定位置在非 Unicode 环境里可由 CursorPos 而来，D5/6/7 是 Ansi 位置，
+       2005~2007 是 UTF8 的字节位置（一个汉字跨 3 列），
+       2009 以上要注意，EdPos 居然也要求是 UTF8 字节位置。而 2009 下 CursorPos 是 Ansi，
+       不能直接拿 CursorPos 来作为 EdPos 参数，而必须经过一次 UTF8 转换 }
     function GetLineIsElided(EditControl: TControl; LineNum: Integer): Boolean;
     {* 返回指定行是否折叠，不包括折叠的头尾，也就是返回是否隐藏。
        只对 BDS 有效，其余情况返回 False}
@@ -358,9 +364,10 @@ type
     {* 刷新编辑器 }
     function GetTextAtLine(EditControl: TControl; LineNum: Integer): string;
     {* 取指定行的文本。注意该函数取到的文本是将 Tab 扩展成空格的，如果使用
-       ConvertPos 来转换成 EditPos 可能会有问题。直接将 CharIndex + 1 赋值
-       给 EditPos.Col 即可。
-       另外，LineNum为逻辑行号，也就是和折叠无关的实际行号 }
+       ConvertPos 来转换成 EditPos 可能会有问题。直接将 CharIndex + 1
+       赋值给 EditPos.Col 即可。
+       字符串返回类型：AnsiString/Ansi-Utf8/UnicodeString
+       另外，LineNum为逻辑行号，也就是和折叠无关的实际行号，1 开始 }
     function IndexPosToCurPos(EditControl: TControl; Col, Line: Integer): Integer;
     {* 计算编辑器字符串索引到编辑器显示的实际位置 }
 
@@ -1008,18 +1015,32 @@ begin
     Result := nil;
 end;
 
-function TCnEditControlWrapper.IndexOfEditor(
-  EditControl: TControl): Integer;
+function TCnEditControlWrapper.IndexOfEditor(EditControl: TControl): Integer;
 var
-  i: Integer;
+  I: Integer;
 begin
-  for i := 0 to EditorCount - 1 do
+  for I := 0 to EditorCount - 1 do
   begin
-    if Editors[i].EditControl = EditControl then
+    if Editors[I].EditControl = EditControl then
     begin
-      Result := i;
+      Result := I;
       Exit;
-    end;  
+    end;
+  end;
+  Result := -1;
+end;
+
+function TCnEditControlWrapper.IndexOfEditor(EditView: IOTAEditView): Integer;
+var
+  I: Integer;
+begin
+  for I := 0 to EditorCount - 1 do
+  begin
+    if Editors[I].EditView = EditView then
+    begin
+      Result := I;
+      Exit;
+    end;
   end;
   Result := -1;
 end;
@@ -1656,6 +1677,22 @@ begin
   end;
 end;
 
+function TCnEditControlWrapper.GetEditControl(EditView: IOTAEditView): TControl;
+var
+  Idx: Integer;
+begin
+  Idx := IndexOfEditor(EditView);
+  if Idx >= 0 then
+    Result := Editors[Idx].EditControl
+  else
+  begin
+{$IFDEF DEBUG}
+//  CnDebugger.LogMsgWarning('GetEditControl: not found in list.');
+{$ENDIF}
+    Result := CnOtaGetCurrentEditControl;
+  end;
+end;
+
 function TCnEditControlWrapper.GetTopMostEditControl: TControl;
 var
   Idx: Integer;
@@ -1676,13 +1713,33 @@ end;
 
 function TCnEditControlWrapper.GetEditViewFromTabs(TabControl: TXTabControl;
   Index: Integer): IOTAEditView;
+{$IFDEF EDITOR_TAB_ONLYFROM_WINCONTROL}
+var
+  Tabs: TStrings;
+{$ENDIF}
 begin
+{$IFDEF EDITOR_TAB_ONLYFROM_WINCONTROL}
+  if Assigned(GetOTAEditView) and (TabControl <> nil) and (GetEditorTabTabIndex(TabControl) >= 0) then
+  begin
+    Tabs := GetEditorTabTabs(TabControl);
+    if (Tabs <> nil) and (Tabs.Objects[Index] <> nil) then
+    begin
+      if Tabs.Objects[Index].ClassNameIs(STEditViewClass) then
+      begin
+        Result := GetOTAEditView(Tabs.Objects[Index]);
+        Exit;
+      end;
+    end;
+  end;
+  Result := nil;
+{$ELSE}
   if Assigned(GetOTAEditView) and (TabControl <> nil) and
     (TabControl.TabIndex >= 0) and (TabControl.Tabs.Objects[Index] <> nil) and
     TabControl.Tabs.Objects[Index].ClassNameIs(STEditViewClass) then
     Result := GetOTAEditView(TabControl.Tabs.Objects[Index])
   else
     Result := nil;
+{$ENDIF}
 end;
 
 procedure TCnEditControlWrapper.GetAttributeAtPos(EditControl: TControl; const

@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -49,8 +49,6 @@ interface
 {$I CnWizards.inc}
 
 {$IFDEF CNWIZARDS_CNPROJECTEXTWIZARD}
-
-{$IFDEF SUPPORT_PRJ_BACKUP}
 
 uses
   Windows, SysUtils, Messages, Classes, Graphics, Forms, Controls, StdCtrls,
@@ -205,15 +203,11 @@ function ShowProjectBackupForm(Ini: TCustomIniFile): Boolean;
 
 function GetFileIconIndex(FileName: string): Integer;
 
-{$ENDIF SUPPORT_PRJ_BACKUP}
-
 {$ENDIF CNWIZARDS_CNPROJECTEXTWIZARD}
 
 implementation
 
 {$IFDEF CNWIZARDS_CNPROJECTEXTWIZARD}
-
-{$IFDEF SUPPORT_PRJ_BACKUP}
 
 {$R *.DFM}
 
@@ -1151,8 +1145,6 @@ begin
   SetListViewWidthString(lvFileView, FListViewWidthStr);
 {$ENDIF}
 end;
-
-{$ENDIF SUPPORT_PRJ_BACKUP}
 
 {$ENDIF CNWIZARDS_CNPROJECTEXTWIZARD}
 end.

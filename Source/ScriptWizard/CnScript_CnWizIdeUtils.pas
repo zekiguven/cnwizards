@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -131,6 +131,7 @@ begin
   CL.AddDelphiFunction('Function GetIdeMainForm : TCustomForm');
   CL.AddDelphiFunction('Function GetIdeEdition : string');
   CL.AddDelphiFunction('Function GetComponentPaletteTabControl : TTabControl');
+  CL.AddDelphiFunction('Function GetNewComponentPaletteTabControl : TWinControl');
   CL.AddDelphiFunction('Function GetObjectInspectorForm : TCustomForm');
   CL.AddDelphiFunction('Function GetComponentPalettePopupMenu : TPopupMenu');
   CL.AddDelphiFunction('Function GetComponentPaletteControlBar : TControlBar');
@@ -374,6 +375,7 @@ begin
   S.RegisterDelphiFunction(@GetIdeMainForm, 'GetIdeMainForm', cdRegister);
   S.RegisterDelphiFunction(@GetIdeEdition, 'GetIdeEdition', cdRegister);
   S.RegisterDelphiFunction(@GetComponentPaletteTabControl, 'GetComponentPaletteTabControl', cdRegister);
+  S.RegisterDelphiFunction(@GetNewComponentPaletteTabControl, 'GetNewComponentPaletteTabControl', cdRegister);
   S.RegisterDelphiFunction(@GetObjectInspectorForm, 'GetObjectInspectorForm', cdRegister);
   S.RegisterDelphiFunction(@GetComponentPalettePopupMenu, 'GetComponentPalettePopupMenu', cdRegister);
   S.RegisterDelphiFunction(@GetComponentPaletteControlBar, 'GetComponentPaletteControlBar', cdRegister);

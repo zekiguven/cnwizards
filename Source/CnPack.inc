@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -40,6 +40,20 @@
 //==============================================================================
 // 产生编译器版本信息
 //==============================================================================
+
+{$IFDEF VER310}
+  {$DEFINE COMPILER24}
+  {$IFDEF LINUX}
+    {$DEFINE UCL10}
+  {$ELSE}
+    {$DEFINE VCL71}
+  {$ENDIF}
+  {$DEFINE DELPHI24}
+  {$DEFINE DELPHI101_BERLIN}
+  {$DEFINE BCB24}
+  {$DEFINE BCB101_BERLIN}
+  {$DEFINE BDS18}
+{$ENDIF}
 
 {$IFDEF VER300}
   {$DEFINE COMPILER23}
@@ -332,6 +346,56 @@
 {$ENDIF}
 
 // DELPHIX_UP from DELPHIX mappings
+
+{$IFDEF DELPHI24}
+  {$DEFINE DELPHI}
+  {$DEFINE DELPHI24_UP}
+  {$DEFINE DELPHI23_UP}
+  {$DEFINE DELPHI22_UP}
+  {$DEFINE DELPHI21_UP}
+  {$DEFINE DELPHI20_UP}
+  {$DEFINE DELPHI19_UP}
+  {$DEFINE DELPHI18_UP}
+  {$DEFINE DELPHI17_UP}
+  {$DEFINE DELPHI16_UP}
+  {$DEFINE DELPHI15_UP}
+  {$DEFINE DELPHI14_UP}
+  {$DEFINE DELPHI12_UP}
+  {$DEFINE DELPHI11_UP}
+  {$DEFINE DELPHI10_UP}
+  {$DEFINE DELPHI9_UP}
+  {$DEFINE DELPHI8_UP}
+  {$DEFINE DELPHI7_UP}
+  {$DEFINE DELPHI6_UP}
+  {$DEFINE DELPHI5_UP}
+  {$DEFINE DELPHI4_UP}
+  {$DEFINE DELPHI3_UP}
+  {$DEFINE DELPHI2_UP}
+  {$DEFINE DELPHI1_UP}
+{$ENDIF}
+
+{$IFDEF DELPHI101_BERLIN}
+  {$DEFINE DELPHI101_BERLIN_UP}
+  {$DEFINE DELPHI10_SEATTLE_UP}
+  {$DEFINE DELPHIXE8_UP}
+  {$DEFINE DELPHIXE7_UP}
+  {$DEFINE DELPHIXE6_UP}
+  {$DEFINE DELPHIXE5_UP}
+  {$DEFINE DELPHIXE4_UP}
+  {$DEFINE DELPHIXE3_UP}
+  {$DEFINE DELPHIXE2_UP}
+  {$DEFINE DELPHIXE_UP}
+
+  // NO DELPHI2014 defined, so need define below here.
+  {$DEFINE DELPHI2013_UP}
+  {$DEFINE DELPHI2012_UP}
+  {$DEFINE DELPHI2011_UP}
+  {$DEFINE DELPHI2010_UP}
+  {$DEFINE DELPHI2009_UP}
+  {$DEFINE DELPHI2007_UP}
+  {$DEFINE DELPHI2006_UP}
+  {$DEFINE DELPHI2005_UP}
+{$ENDIF}
 
 {$IFDEF DELPHI23}
   {$DEFINE DELPHI}
@@ -868,6 +932,52 @@
 
 // BCBX_UP from BCBX mappings
 
+{$IFDEF BCB24}
+  {$DEFINE BCB}
+  {$DEFINE BCB24_UP}
+  {$DEFINE BCB23_UP}
+  {$DEFINE BCB22_UP}
+  {$DEFINE BCB21_UP}
+  {$DEFINE BCB20_UP}
+  {$DEFINE BCB19_UP}
+  {$DEFINE BCB18_UP}
+  {$DEFINE BCB17_UP}
+  {$DEFINE BCB16_UP}
+  {$DEFINE BCB15_UP}
+  {$DEFINE BCB14_UP}
+  {$DEFINE BCB12_UP}
+  {$DEFINE BCB11_UP}
+  {$DEFINE BCB10_UP}
+  {$DEFINE BCB7_UP}
+  {$DEFINE BCB6_UP}
+  {$DEFINE BCB5_UP}
+  {$DEFINE BCB4_UP}
+  {$DEFINE BCB3_UP}
+  {$DEFINE BCB1_UP}
+{$ENDIF}
+
+{$IFDEF BCB101_BERLIN}
+  {$DEFINE BCB101_BERLIN_UP}
+  {$DEFINE BCB10_SEATTLE_UP}
+  {$DEFINE BCBXE8_UP}
+  {$DEFINE BCBXE7_UP}
+  {$DEFINE BCBXE6_UP}
+  {$DEFINE BCBXE5_UP}
+  {$DEFINE BCBXE4_UP}
+  {$DEFINE BCBXE3_UP}
+  {$DEFINE BCBXE2_UP}
+  {$DEFINE BCBXE_UP}
+
+  // NO BCB2014 defined, so need define below here.
+  {$DEFINE BCB2013_UP}
+  {$DEFINE BCB2012_UP}
+  {$DEFINE BCB2011_UP}
+  {$DEFINE BCB2010_UP}
+  {$DEFINE BCB2009_UP}
+  {$DEFINE BCB2007_UP}
+  {$DEFINE BCB2006_UP}
+{$ENDIF}
+
 {$IFDEF BCB23}
   {$DEFINE BCB}
   {$DEFINE BCB23_UP}
@@ -1331,6 +1441,37 @@
 
 // BDSXX_UP from BDSXX mappings
 
+{$IFDEF BDS18}
+  {$DEFINE BDS}
+  {$DEFINE BDS18_UP}
+  {$DEFINE BDS17_UP}
+  {$DEFINE BDS16_UP}
+  {$DEFINE BDS15_UP}
+  {$DEFINE BDS14_UP}
+  {$DEFINE BDS12_UP}
+  {$DEFINE BDS11_UP}
+  {$DEFINE BDS10_UP}
+  {$DEFINE BDS9_UP}
+  {$DEFINE BDS8_UP}
+  {$DEFINE BDS7_UP}
+  {$DEFINE BDS6_UP}
+  {$DEFINE BDS5_UP}
+  {$DEFINE BDS4_UP}
+  {$DEFINE BDS3_UP}
+  {$DEFINE BDS2_UP}
+  {$DEFINE BDS1_UP}
+
+  // NO BDS2014 defined, so need define below here.
+  {$DEFINE BDS2013_UP}
+  {$DEFINE BDS2012_UP}
+  {$DEFINE BDS2011_UP}
+  {$DEFINE BDS2010_UP}
+  {$DEFINE BDS2009_UP}
+  {$DEFINE BDS2007_UP}
+  {$DEFINE BDS2006_UP}
+  {$DEFINE BDS2005_UP}
+{$ENDIF}
+
 {$IFDEF BDS17}
   {$DEFINE BDS}
   {$DEFINE BDS17_UP}
@@ -1652,6 +1793,33 @@
 {$ENDIF}
 
 // COMPILERX_UP from COMPILERX mappings
+
+{$IFDEF COMPILER24}
+  {$DEFINE COMPILER24_UP}
+  {$DEFINE COMPILER23_UP}
+  {$DEFINE COMPILER22_UP}
+  {$DEFINE COMPILER21_UP}
+  {$DEFINE COMPILER20_UP}
+  {$DEFINE COMPILER19_UP}
+  {$DEFINE COMPILER18_UP}
+  {$DEFINE COMPILER17_UP}
+  {$DEFINE COMPILER16_UP}
+  {$DEFINE COMPILER15_UP}
+  {$DEFINE COMPILER14_UP}
+  {$DEFINE COMPILER12_UP}
+  {$DEFINE COMPILER11_UP}
+  {$DEFINE COMPILER10_UP}
+  {$DEFINE COMPILER9_UP}
+  {$DEFINE COMPILER8_UP}
+  {$DEFINE COMPILER7_UP}
+  {$DEFINE COMPILER6_UP}
+  {$DEFINE COMPILER5_UP}
+  {$DEFINE COMPILER4_UP}
+  {$DEFINE COMPILER35_UP}
+  {$DEFINE COMPILER3_UP}
+  {$DEFINE COMPILER2_UP}
+  {$DEFINE COMPILER1_UP}
+{$ENDIF}
 
 {$IFDEF COMPILER23}
   {$DEFINE COMPILER23_UP}
@@ -2149,6 +2317,10 @@
   {$DEFINE SUPPORTS_INLINE}
 {$ENDIF}
 
+{$IFDEF BDS2006_UP}
+  {$DEFINE IDE_HAS_GUIDE_LINE}    // 2006 and above has Designer Guide Line
+{$ENDIF}
+
 {$IFDEF DELPHIXE2_UP}
   {$DEFINE SUPPORT_UNITNAME_DOT}
 {$ENDIF}
@@ -2161,7 +2333,7 @@
   {$DEFINE SUPPORTS_32_AND_64}
   {$DEFINE SUPPORTS_FMX}
   {$DEFINE SUPPORTS_CROSS_PLATFORM}
-  {$DEFINE VERSIONINFO_PER_CONFIGURATION}  // Every Configuruation can have a Version Info
+  {$DEFINE VERSIONINFO_PER_CONFIGURATION}  // Every Configuruation can have a Version Info.
   {$DEFINE OTA_ENVOPTIONS_PLATFORM_BUG}
     // A Bug Can't get Correct Env Option Values for Current Platform.
   {$DEFINE LIST_NEW_POINTER}
@@ -2169,6 +2341,7 @@
 
 {$IFDEF BDS2010_UP}
   {$DEFINE SUPPORTS_INTERFACE_AS_OBJECT}
+  {$DEFINE IDE_HAS_NEW_COMPONENT_PALETTE}  // IDE has a new style Component Palette.
 {$ENDIF}
 
 {$IFDEF BDS2009_UP}
@@ -2176,7 +2349,7 @@
   {$DEFINE OBJECT_HAS_TOSTRING}  // TObject.ToString Function
   {$DEFINE OBJECT_HAS_EQUAL}     // TObject.Equal Function
   {$DEFINE SUPPORT_OTA_PROJECT_CONFIGURATION}
-  {$IFNDEF DELPHIXE2_UP}  // 2009/2010/XE has a Project Version Number Bug
+  {$IFNDEF DELPHIXE2_UP}  // 2009/2010/XE has a Project Version Number Bug.
     {$DEFINE PROJECT_VERSION_NUMBER_BUG}
   {$ENDIF}
 {$ENDIF}
@@ -2185,16 +2358,25 @@
   {$DEFINE IDE_CONF_MANAGER}
 {$ENDIF}
 
+{$IFDEF BDS2006_UP}
+  {$DEFINE EDITOR_TAB_ONLYFROM_WINCONTROL}
+  // From BDS 2006 IDEGraident Editor Tab is Only From WinControl, not TabSet/TabControl 
+{$ENDIF}
+
+{$IFDEF BDS}
+  {$DEFINE IDE_ACTION_UPDATE_DELAY} // IDE's Action Menu Update will Delay in 2005 or Up.
+{$ENDIF}
+
 {$IFDEF COMPILER21_UP}
   {$DEFINE NOT_SUPPORT_BDE}
 {$ENDIF}
 
 {$IFDEF DELPHIXE8_UP}
-  {$DEFINE IDE_INTEGRATE_CASTALIA} // XE8 and 10S integrate Castalia
+  {$DEFINE IDE_INTEGRATE_CASTALIA} // XE8 and 10S integrate Castalia.
 {$ENDIF}
 
 {$IFDEF DELPHI10_SEATTLE_UP}
-  {$DEFINE IDE_HAS_HIDE_NONVISUAL} // 10S has "Hide Nonvisual" Feature
+  {$DEFINE IDE_HAS_HIDE_NONVISUAL} // 10S has "Hide Nonvisual" Feature.
 {$ENDIF}
 
 //==============================================================================

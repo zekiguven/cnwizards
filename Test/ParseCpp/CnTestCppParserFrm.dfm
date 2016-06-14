@@ -48,6 +48,8 @@ object CppParseForm: TCppParseForm
     Font.Style = []
     Lines.Strings = (
       '#include <stdio.h>'
+      '#include "io.h"'
+      ''
       'void do_some(int a)'
       '{'
       '    printf("Test.\n"); // Test'
@@ -99,6 +101,15 @@ object CppParseForm: TCppParseForm
     Caption = 'Wide Tokenize'
     TabOrder = 3
     OnClick = btnWideTokenizeClick
+  end
+  object btnInc: TButton
+    Left = 558
+    Top = 16
+    Width = 83
+    Height = 25
+    Caption = 'Get Includes'
+    TabOrder = 6
+    OnClick = btnIncClick
   end
   object dlgOpen1: TOpenDialog
     Filter = 'C/C++ Files (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.h;*.hpp'

@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -42,10 +42,6 @@ interface
 
 {$IFDEF CNWIZARDS_CNSRCEDITORENHANCE}
 
-{$IFNDEF BDS}
-  {$DEFINE NEED_MODIFIED_TAB}
-{$ENDIF}
-
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Dialogs, ToolsAPI,
   Contnrs, IniFiles, Forms, ExtCtrls, Menus, ComCtrls, TypInfo, Math, FileCtrl,
@@ -65,7 +61,7 @@ type
     FTabControlList: TComponentList;
     FMenuHook: TCnMenuHook;
   {$IFDEF COMPILER6_UP}
-    FMenuHook1: TCnMenuHook;
+    FMenuHookTabPopup: TCnMenuHook;
   {$ENDIF COMPILER6_UP}
     FExploreMenu: TCnMenuItemDef;
     FSelAllMenu: TCnMenuItemDef;
@@ -83,9 +79,8 @@ type
     FCopyFileNameMenu1: TCnMenuItemDef;
     FExploreMenu1: TCnMenuItemDef;
   {$ENDIF COMPILER6_UP}
-  {$IFDEF NEED_MODIFIED_TAB}
-    FTimer: TTimer;
-  {$ENDIF}
+
+    FTabModifyTimer: TTimer;
     FDblClickClosePage: Boolean;
     FRClickShellMenu: Boolean;
     FChangeCodeComKey: Boolean;
@@ -136,10 +131,8 @@ type
     procedure EditControlNotify(EditControl: TControl; EditWindow: TCustomForm; 
       Operation: TOperation);
     procedure OnAppMessage(var Msg: TMsg; var Handled: Boolean);
-  {$IFDEF NEED_MODIFIED_TAB}
     procedure DoUpdateTabControlCaption(ClearFlag: Boolean);
     procedure UpdateTabControlCaption(Sender: TObject);
-  {$ENDIF}
     procedure AutoSaveOnTimer(Sender: TObject);
     procedure SetDispModifiedInTab(const Value: Boolean);
     procedure SetAddMenuBlockTools(const Value: Boolean);
@@ -201,7 +194,7 @@ uses
 {$IFDEF DEBUG}
   CnDebug,
 {$ENDIF}
-{$IFDEF DelphiXE2_UP}
+{$IFDEF DELPHIXE2_UP}
   Rtti,
 {$ENDIF}
   CnSrcEditorEnhance, CnWizOptions, CnWizShortCut, CnNativeDecl;
@@ -230,18 +223,16 @@ begin
   
   FMenuHook := TCnMenuHook.Create(nil);
 {$IFDEF COMPILER6_UP}
-  FMenuHook1 := TCnMenuHook.Create(nil);
+  FMenuHookTabPopup := TCnMenuHook.Create(nil);
 {$ENDIF COMPILER6_UP}
   FReadOnlyDirs := TStringList.Create;
   FActualDirs := TStringList.Create;
   RegisterUserMenuItems;
 
-{$IFDEF NEED_MODIFIED_TAB}
-  FTimer := TTimer.Create(nil);
-  FTimer.Interval := 200;
-  FTimer.OnTimer := UpdateTabControlCaption;
-  FTimer.Enabled := True;
-{$ENDIF}
+  FTabModifyTimer := TTimer.Create(nil);
+  FTabModifyTimer.Interval := 200;
+  FTabModifyTimer.OnTimer := UpdateTabControlCaption;
+  FTabModifyTimer.Enabled := True;
 
   FAutoSaveTimer := TTimer.Create(nil);
   FAutoSaveTimer.OnTimer := AutoSaveOnTimer;
@@ -260,16 +251,13 @@ begin
   CnWizNotifierServices.RemoveApplicationMessageNotifier(OnAppMessage);
   CnWizNotifierServices.RemoveSourceEditorNotifier(OnSourceEditorNotify);
 
-{$IFDEF NEED_MODIFIED_TAB}
-  FTimer.Free;
-{$ENDIF}
-
+  FTabModifyTimer.Free;
   FAutoSaveTimer.Free;
   FActualDirs.Free;
   FReadOnlyDirs.Free;
   FMenuHook.Free;
 {$IFDEF COMPILER6_UP}
-  FMenuHook1.Free;
+  FMenuHookTabPopup.Free;
 {$ENDIF COMPILER6_UP}
   FTabControlList.Free;
 
@@ -343,9 +331,9 @@ begin
   {$IFDEF COMPILER6_UP}
     // 挂接标签页右键菜单
     PopupMenu := TControlHack(TabControl).PopupMenu;
-    if not FMenuHook1.IsHooked(PopupMenu) then
+    if not FMenuHookTabPopup.IsHooked(PopupMenu) then
     begin
-      FMenuHook1.HookMenu(PopupMenu);
+      FMenuHookTabPopup.HookMenu(PopupMenu);
     {$IFDEF DEBUG}
       CnDebugger.LogMsg('Hooked a XTabControl''s PopupMenu');
     {$ENDIF}
@@ -399,7 +387,7 @@ var
   View: IOTAEditView;
   Control: TWinControl;
   XPos, YPos: Integer;
-{$IFDEF DelphiXE2_UP}
+{$IFDEF DELPHIXE2_UP}
   Method: TRttiMethod;
 {$ENDIF}
 begin
@@ -412,7 +400,7 @@ begin
     XPos := Msg.lParam and $FFFF;
     YPos := (Msg.lParam shr 16) and $FFFF;
     Control := FindControl(Msg.hwnd);
-    {$IFDEF DelphiXE2_UP}
+    {$IFDEF DELPHIXE2_UP}
     Method := TRttiContext.Create().GetType(Control.ClassType).GetMethod('ItemAtPos');
     if Assigned(Method) then
       Idx := Method.Invoke(Control, [TValue.From(Point(XPos, YPos))]).AsInteger
@@ -422,12 +410,13 @@ begin
     if (Control <> nil) and (Control is TXTabControl) then
     begin
       TabControl := Control as TXTabControl;
+{$IFNDEF EDITOR_TAB_ONLYFROM_WINCONTROL}
     {$IFDEF BDS}
       Idx := TabControl.ItemAtPos(Point(XPos, YPos));
     {$ELSE}
       Idx := TabControl.IndexOfTabAt(XPos, YPos);
     {$ENDIF}
-
+{$ENDIF}
       if Msg.message = WM_RBUTTONUP then
       begin
         if Idx >= 0 then
@@ -458,7 +447,7 @@ begin
       Control.ClassNameIs(XTabControlClassName) then
     begin
       PostMessage(Control.Handle, WM_MBUTTONUP, 16, Msg.lParam);
-      {$IFDEF DelphiXE2_UP}
+      {$IFDEF DELPHIXE2_UP}
       if Idx >= 0 then Handled := True;
       {$ENDIF}
     end;
@@ -507,23 +496,23 @@ begin
   {$IFNDEF BDS4_UP}
   FCloseOtherPagesMenu1 := TCnMenuItemDef.Create(SCnMenuCloseOtherPagesName + '1',
     SCnMenuCloseOtherPagesCaption, OnCloseOtherPages, ipAfter, SMenuClosePageIIName);
-  FMenuHook1.AddMenuItemDef(FCloseOtherPagesMenu1);
+  FMenuHookTabPopup.AddMenuItemDef(FCloseOtherPagesMenu1);
   FShellMenu1 := TCnMenuItemDef.Create(SCnShellMenuName + '1',
     SCnMenuShellMenuCaption, OnShellMenu, ipAfter, SCnMenuCloseOtherPagesName + '1');
   {$ELSE}
   FShellMenu1 := TCnMenuItemDef.Create(SCnShellMenuName + '1',
     SCnMenuShellMenuCaption, OnShellMenu, ipAfter, SMenuClosePageIIName);
   {$ENDIF}
-  FMenuHook1.AddMenuItemDef(FShellMenu1);
+  FMenuHookTabPopup.AddMenuItemDef(FShellMenu1);
 
   FCopyFileNameMenu1 := TCnMenuItemDef.Create(SCnCopyFileNameMenuName + '1',
     SCnMenuCopyFileNameMenuCaption, OnCopyFileName, ipAfter, SCnShellMenuName + '1');
-  FMenuHook1.AddMenuItemDef(FCopyFileNameMenu1);
+  FMenuHookTabPopup.AddMenuItemDef(FCopyFileNameMenu1);
 
   FExploreMenu1 := TCnMenuItemDef.Create(SCnMenuExploreName + '1', SCnMenuExploreCaption,
     OnExplore, ipAfter, SCnCopyFileNameMenuName + '1');
   FExploreMenu1.OnCreated := OnExploreMenuCreated;
-  FMenuHook1.AddMenuItemDef(FExploreMenu1);
+  FMenuHookTabPopup.AddMenuItemDef(FExploreMenu1);
 {$ENDIF COMPILER6_UP}
 end;
 
@@ -846,13 +835,13 @@ end;
 // TabControl 标题扩展
 //------------------------------------------------------------------------------
 
-{$IFDEF NEED_MODIFIED_TAB}
 procedure TCnSrcEditorMisc.DoUpdateTabControlCaption(ClearFlag: Boolean);
 var
   I, J: Integer;
   TabControl: TXTabControl;
   EditView: IOTAEditView;
   NewCaption: string;
+  Tabs: TStrings;
 
   function IsModified(AView: IOTAEditView): Boolean;
   var
@@ -875,29 +864,32 @@ var
     else if not IsModified and (StrRight(Result, 1) = '*') then
       Delete(Result, Length(Result), 1);
   end;
+
 begin
   try
     for I := 0 to FTabControlList.Count - 1 do
       if FTabControlList[I] is TXTabControl then
       begin
         TabControl := TXTabControl(FTabControlList[I]);
-        for J := 0 to TabControl.Tabs.Count - 1 do
+        Tabs := GetEditorTabTabs(TabControl);
+
+        for J := 0 to Tabs.Count - 1 do
         begin
           if ClearFlag then
           begin
             // 如果不比较直接赋值，会导致CPU占用100%
-            NewCaption := GetNewCaption(TabControl.Tabs[J], False);
-            if not SameText(TabControl.Tabs[J], NewCaption) then
-              TabControl.Tabs[J] := NewCaption;
+            NewCaption := GetNewCaption(Tabs[J], False);
+            if not SameText(Tabs[J], NewCaption) then
+              Tabs[J] := NewCaption;
           end
-          else if TabControl.Tabs.Objects[J] <> nil then
+          else if Tabs.Objects[J] <> nil then
           begin
             EditView := EditControlWrapper.GetEditViewFromTabs(TabControl, J);
             if Assigned(EditView) then
             begin
-              NewCaption := GetNewCaption(TabControl.Tabs[J], IsModified(EditView));
-              if not SameText(TabControl.Tabs[J], NewCaption) then
-                TabControl.Tabs[J] := NewCaption;
+              NewCaption := GetNewCaption(Tabs[J], IsModified(EditView));
+              if not SameText(Tabs[J], NewCaption) then
+                Tabs[J] := NewCaption;
             end;
           end;
         end;
@@ -913,7 +905,6 @@ begin
   if Active and DispModifiedInTab then
     DoUpdateTabControlCaption(False);
 end;
-{$ENDIF}
 
 //------------------------------------------------------------------------------
 // 参数设置
@@ -1079,14 +1070,12 @@ begin
   FActive := Value;
   FMenuHook.Active := Value;
 {$IFDEF COMPILER6_UP}
-  FMenuHook1.Active := Value;
+  FMenuHookTabPopup.Active := Value;
 {$ENDIF COMPILER6_UP}
   UpdateCodeCompletionHotKey;
   UpdateAutoSaveTimer;
-{$IFDEF NEED_MODIFIED_TAB}
   if not FActive or not DispModifiedInTab then
     DoUpdateTabControlCaption(True);
-{$ENDIF}
 end;
 
 procedure TCnSrcEditorMisc.SetAddMenuBlockTools(const Value: Boolean);
@@ -1131,10 +1120,8 @@ begin
   if FDispModifiedInTab <> Value then
   begin
     FDispModifiedInTab := Value;
-  {$IFDEF NEED_MODIFIED_TAB}
     if not Value then
       DoUpdateTabControlCaption(True);
-  {$ENDIF}
   end;
 end;
 

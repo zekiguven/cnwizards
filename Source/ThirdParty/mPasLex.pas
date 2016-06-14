@@ -86,7 +86,7 @@ var
   mHashTable: array[#0..#255]of Integer;
 
 type
-  TTokenKind=(tkAbsolute, tkAbstract, tkAddressOp, tkAnd, tkAnsiComment,
+  TTokenKind=(tkAbsolute, tkAbstract, tkAddressOp, tkAmpersand, tkAnd, tkAnsiComment,
     tkArray, tkAs, tkAt, tkAsciiChar, tkAsm, tkAssembler, tkAssign, tkAutomated,
     tkBegin, tkBadString, tkBorComment, tkCase, tkCdecl, tkClass, tkColon,
     tkComma, tkCompDirect, tkConst, tkConstructor, tkCRLF, tkCRLFCo, tkDefault,
@@ -102,7 +102,7 @@ type
     tkPacked, tkPascal, tkPlus, tkPoint, tkPointerSymbol, tkPrivate, tkProcedure,
     tkProgram, tkProperty, tkProtected, tkPublic, tkPublished, tkRaise, tkRead,
     tkReadonly, tkRecord, tkRegister, tkReintroduce, tkRepeat, tkResident,
-    tkResourcestring, tkRoundClose, tkRoundOpen, tkSafecall, tkSemiColon, tkSet,
+    tkResourcestring, tkRoundClose, tkRoundOpen, tkSafecall, tkSealed, tkSemiColon, tkSet,
     tkShl, tkShr, tkSlash, tkSlashesComment, tkSquareClose, tkSquareOpen,
     tkSpace, tkStar, tkStdcall, tkStored, tkString, tkStringresource, tkSymbol,
     tkThen, tkThreadvar, tkTo, tkTry, tkType, tkUnit, tkUnknown, tkUntil, tkUses,
@@ -156,6 +156,7 @@ type
     function Func41: TTokenKind;
     function Func44: TTokenKind;
     function Func45: TTokenKind;
+    function Func46: TTokenKind;
     function Func47: TTokenKind;
     function Func49: TTokenKind;
     function Func52: TTokenKind;
@@ -244,6 +245,7 @@ type
     procedure StringProc;
     procedure BadStringProc; // ´úÌæË«ÒýºÅ×Ö·û´®
     procedure SymbolProc;
+    procedure AmpersandProc; // &
     procedure UnknownProc;
     function GetToken: AnsiString;
     function InSymbols(aChar: AnsiChar): Boolean;
@@ -331,6 +333,7 @@ begin
       41: fIdentFuncTable[I]:=Func41;
       44: fIdentFuncTable[I]:=Func44;
       45: fIdentFuncTable[I]:=Func45;
+      46: fIdentFuncTable[I]:=Func46;
       47: fIdentFuncTable[I]:=Func47;
       49: fIdentFuncTable[I]:=Func49;
       52: fIdentFuncTable[I]:=Func52;
@@ -531,6 +534,11 @@ end;
 function TmwPasLex.Func45: TTokenKind;
 begin
   if KeyComp('Shr')then Result:=tkShr else Result:=tkIdentifier;
+end;
+
+function TmwPasLex.Func46: TTokenKind;
+begin
+  if KeyComp('Sealed')then Result:=tkSealed else Result:=tkIdentifier;
 end;
 
 function TmwPasLex.Func47: TTokenKind;
@@ -911,6 +919,7 @@ begin
             ']': fProcTable[I]:=SquareCloseProc;
             '^': fProcTable[I]:=PointerSymbolProc;
             '"': fProcTable[I]:=BadStringProc;
+            '&': fProcTable[I]:=AmpersandProc;
           else fProcTable[I]:=SymbolProc;
           end;
         end;
@@ -1400,6 +1409,12 @@ procedure TmwPasLex.SymbolProc;
 begin
   inc(Run);
   fTokenID:=tkSymbol;
+end;
+
+procedure TmwPasLex.AmpersandProc;
+begin
+  inc(Run);
+  fTokenID:=tkAmpersand;
 end;
 
 procedure TmwPasLex.UnknownProc;

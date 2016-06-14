@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -418,7 +418,7 @@ begin
   else
   begin
 {$IFDEF DEBUG}
-    CnDebugger.LogMsgError('MultiLang Initialization Error. Use English Font as default.');
+    CnDebugger.LogMsgError('DockForm MultiLang Initialization Error. Use English Font as default.');
 {$ENDIF}
     // 因初始化失败而无语言条目，因原始窗体是英文，故设置为英文字体
     Font.Charset := DEFAULT_CHARSET;

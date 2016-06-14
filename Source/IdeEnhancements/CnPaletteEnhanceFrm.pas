@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -70,6 +70,8 @@ type
     chkCompFilter: TCheckBox;
     chkButtonStyle: TCheckBox;
     chkLockToolbar: TCheckBox;
+    lblShortcut: TLabel;
+    hkCompFilter: THotKey;
     procedure FormCreate(Sender: TObject);
     procedure btnHelpClick(Sender: TObject);
     procedure UpdateControls(Sender: TObject);
@@ -112,11 +114,15 @@ begin
   chkButtonStyle.Enabled := False;
   chkDivTabMenu.Enabled := False;
   chkCompFilter.Enabled := False;
+  lblShortcut.Enabled := False;
+  hkCompFilter.Enabled := False;
   {$ELSE}
   chkMultiLine.Enabled := True;
   chkButtonStyle.Enabled := True;
   chkDivTabMenu.Enabled := True;
   chkCompFilter.Enabled := True;
+  lblShortcut.Enabled := True;
+  hkCompFilter.Enabled := True;
   {$ENDIF}
 end;
 
@@ -144,6 +150,8 @@ begin
   btnDelete.Enabled := chkMoveWizMenus.Checked and (lstDest.SelCount > 0);
   btnUp.Enabled := chkMoveWizMenus.Checked and (lstDest.SelCount > 0);
   btnDown.Enabled := chkMoveWizMenus.Checked and (lstDest.SelCount > 0);
+  lblShortcut.Enabled := chkCompFilter.Checked;
+  hkCompFilter.Enabled := chkCompFilter.Checked;
 end;
 
 procedure TCnPalEnhanceForm.GetWizMenuNames(AList: TStrings);

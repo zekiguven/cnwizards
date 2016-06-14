@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -119,8 +119,10 @@ begin
     RegisterMethod('Procedure UpdateTarget( Target : TObject)');
     RegisterMethod('Procedure ExecuteTarget( Target : TObject)');
     RegisterMethod('Function Execute : Boolean');
+{$IFNDEF DELPHI101_BERLIN_UP}
     RegisterMethod('Procedure RegisterChanges( Value : TBasicActionLink)');
     RegisterMethod('Procedure UnRegisterChanges( Value : TBasicActionLink)');
+{$ENDIF}
     RegisterMethod('Function Update : Boolean');
     RegisterProperty('OnExecute', 'TNotifyEvent', iptrw);
     RegisterProperty('OnUpdate', 'TNotifyEvent', iptrw);
@@ -1418,8 +1420,10 @@ begin
     RegisterVirtualMethod(@TBasicAction.UpdateTarget, 'UpdateTarget');
     RegisterVirtualMethod(@TBasicAction.ExecuteTarget, 'ExecuteTarget');
     RegisterVirtualMethod(@TBasicAction.Execute, 'Execute');
+{$IFNDEF DELPHI101_BERLIN_UP}
     RegisterMethod(@TBasicAction.RegisterChanges, 'RegisterChanges');
     RegisterMethod(@TBasicAction.UnRegisterChanges, 'UnRegisterChanges');
+{$ENDIF}
     RegisterVirtualMethod(@TBasicAction.Update, 'Update');
     RegisterPropertyHelper(@TBasicActionOnExecute_R, @TBasicActionOnExecute_W, 'OnExecute');
     RegisterPropertyHelper(@TBasicActionOnUpdate_R, @TBasicActionOnUpdate_W, 'OnUpdate');

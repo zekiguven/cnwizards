@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -215,6 +215,7 @@ type
     function Func41: TTokenKind;
     function Func44: TTokenKind;
     function Func45: TTokenKind;
+    function Func46: TTokenKind;
     function Func47: TTokenKind;
     function Func49: TTokenKind;
     function Func52: TTokenKind;
@@ -303,6 +304,7 @@ type
     procedure StringProc;
     procedure BadStringProc; // 代替双引号字符串
     procedure SymbolProc;
+    procedure AmpersandProc; // &
     procedure UnknownProc;
     function GetToken: CnWideString;
     function InSymbols(aChar: WideChar): Boolean;
@@ -331,13 +333,15 @@ type
     property LineNumber: Integer read FLineNumber write FLineNumber;
     {* 当前行号，从 1 开始}
     property ColumnNumber: Integer read FColumnNumber write FColumnNumber;
-    {* 当前直观列号，从 1 开始}
+    {* 当前直观列号，从 1 开始，类似于 Ansi}
     property LineStartOffset: Integer read FLineStartOffset write FLineStartOffset;
-    {* 当前行行首所在的线性位置，相对 FOrigin 的偏移量}
+    {* 当前行行首所在的线性位置，相对 FOrigin 的线性偏移量，单位为字符数}
     property Origin: PWideChar read FOrigin write SetOrigin;
+    {* 待解析内容的起始地址}
     property RunPos: Integer read FRun write SetRunPos;
+    {* 当前处理位置相对于 FOrigin 的线性偏移量，单位为字符数}
     property TokenPos: Integer read FTokenPos;
-    {* 当前 Token 所在的线性位置，减去 LineStartOffset 即是当前原始列位置
+    {* 当前 Token 首相对于 FOrigin 的线性偏移量，单位为字符数，减去 LineStartOffset 即是当前原始列位置
     （原始列：每个双字节字符占一列，0 开始，不展开 Tab}
     property TokenID: TTokenKind read FTokenID;
     {* 当前 Token 类型}
@@ -446,6 +450,8 @@ begin
         FIdentFuncTable[I] := Func44;
       45:
         FIdentFuncTable[I] := Func45;
+      46:
+        FIdentFuncTable[I] := Func46;
       47:
         FIdentFuncTable[I] := Func47;
       49:
@@ -771,6 +777,14 @@ function TCnPasWideLex.Func45: TTokenKind;
 begin
   if KeyComp('Shr') then
     Result := tkShr
+  else
+    Result := tkIdentifier;
+end;
+
+function TCnPasWideLex.Func46: TTokenKind;
+begin
+  if KeyComp('Sealed') then
+    Result := tkSealed
   else
     Result := tkIdentifier;
 end;
@@ -1354,6 +1368,8 @@ begin
               FProcTable[I] := PointerSymbolProc;
             '"':
               FProcTable[I] := BadStringProc;
+            '&':
+              FProcTable[I] := AmpersandProc;
           else
             FProcTable[I] := SymbolProc;
           end;
@@ -1964,6 +1980,12 @@ begin
   FTokenID := tkSymbol;
 end;
 
+procedure TCnPasWideLex.AmpersandProc;
+begin
+  StepRun;
+  FTokenID := tkAmpersand;
+end;
+
 procedure TCnPasWideLex.UnknownProc;
 begin
   StepRun;
@@ -2026,11 +2048,11 @@ end;
 function TCnPasWideLex.GetToken: CnWideString;
 var
   Len: LongInt;
-  OutStr: AnsiString;
+  OutStr: CnWideString;
 begin
-  Len := FRun - FTokenPos;
-  SetString(OutStr, (FOrigin + FTokenPos), Len);
-  Result := CnWideString(OutStr);
+  Len := FRun - FTokenPos;                         // 两个偏移量之差，单位为字符数
+  SetString(OutStr, (FOrigin + FTokenPos), Len);   // 以指定内存地址与长度构造字符串
+  Result := OutStr;
 end;
 
 procedure TCnPasWideLex.NextID(ID: TTokenKind);

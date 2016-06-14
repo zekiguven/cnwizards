@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -185,6 +185,7 @@ uses
 
 const
   csDataField = 'DataField';
+  csDataBinding = 'DataBinding';
 
 type
   TControlAccess = class(TControl);
@@ -641,7 +642,8 @@ end;
 
 function TCnPrefixWizard.NeedFieldRename(Component: TComponent): Boolean;
 var
-  PropInfo: PPropInfo;
+  PropInfo, BindingPropInfo: PPropInfo;
+  Binding: TObject;
   Field: string;
 begin
   Result := False;
@@ -659,7 +661,33 @@ begin
         if NeedCustomRename(Component) then
           Result := True;
       end;
-    end;      
+    end
+    else
+    begin
+      BindingPropInfo := GetPropInfo(Component, csDataBinding);
+      if (BindingPropInfo <> nil) and (BindingPropInfo.PropType <> nil) and
+        (BindingPropInfo.PropType^.Kind in [tkClass]) then
+      begin
+        // 有 DataBinding 的子属性，取其 DataField
+        Binding := GetObjectProp(Component, csDataBinding);
+        if Binding <> nil then
+        begin
+          PropInfo := GetPropInfo(Binding, csDataField);
+          if (PropInfo <> nil) and (PropInfo.PropType <> nil) and
+            (PropInfo.PropType^.Kind in [tkString, tkLString, tkWString
+            {$IFDEF UNICODE_STRING}, tkUString{$ENDIF}]) then
+          begin
+            Field := ExtractIdentName(GetStrProp(Binding, csDataField));
+            if Field <> '' then
+            begin
+              // 组件前缀不正确或未命名时才使用 Field 命名
+              if NeedCustomRename(Component) then
+                Result := True;
+            end;
+          end
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -676,8 +704,34 @@ begin
 end;
 
 function TCnPrefixWizard.GetFieldName(Component: TComponent): string;
+var
+  DataBinding: TObject;
 begin
-  Result := ExtractIdentName(GetStrProp(Component, csDataField));
+  Result := '';
+  DataBinding := nil;
+  try
+    Result := ExtractIdentName(GetStrProp(Component, csDataField));
+  except
+    ; // GetStrProp 等在高版本 Delphi 中找不到时会抛 Exception
+  end;
+
+  if Result = '' then
+  begin
+    try
+      DataBinding := GetObjectProp(Component, csDataBinding);
+    except
+      ;
+    end;
+
+    if DataBinding <> nil then
+    begin
+      try
+        Result := ExtractIdentName(GetStrProp(DataBinding, csDataField));
+      except
+        ;
+      end;
+    end;
+  end;
 end;
 
 function TCnPrefixWizard.GetRuleComponentName(Component: TComponent;

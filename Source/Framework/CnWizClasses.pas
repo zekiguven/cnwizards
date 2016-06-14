@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -82,7 +82,7 @@ interface
 
 uses
   Windows, Classes, Sysutils, Graphics, Menus, ActnList, IniFiles, ToolsAPI,
-  Registry, ComCtrls, Forms,
+  Registry, ComCtrls, Forms, CnHashMap, CnWizIni,
   CnWizShortCut, CnWizMenuAction, CnIni, CnWizConsts, CnPopupMenu;
 
 type
@@ -100,6 +100,7 @@ type
   private
     FActive: Boolean;
     FWizardIndex: Integer;
+    FDefaultsMap: TCnStrToVariantHashMap;
   protected
     procedure SetActive(Value: Boolean); virtual;
     {* Active 属性写方法，子类重载该方法处理 Active 属性变更事件 }
@@ -133,6 +134,9 @@ type
     procedure Loaded; virtual;
     {* IDE 启动完成后调用该方法}
 
+    procedure LaterLoaded; virtual;
+    {* IDE 启动完成更迟一些后调用该方法，用于高版本 IDE 中处理 IDE 菜单项加载太迟的场合}
+
     class function IsInternalWizard: Boolean; virtual;
     {* 该专家是否属于内部专家，不显示、不可配置 }
     
@@ -160,7 +164,7 @@ type
 
     class function GetIDStr: string;
     {* 返回专家唯一标识符，供管理器使用 }
-    class function CreateIniFile(CompilerSection: Boolean = False): TCustomIniFile;
+    function CreateIniFile(CompilerSection: Boolean = False): TCustomIniFile;
     {* 返回一个用于存取专家设置参数的 INI 对象，用户使用后须自己释放 }
     procedure DoLoadSettings;
     {* 装载专家设置 }
@@ -597,6 +601,7 @@ end;
 // 类析构器
 destructor TCnBaseWizard.Destroy;
 begin
+  FDefaultsMap.Free;
   inherited Destroy;
 end;
 
@@ -656,15 +661,18 @@ end;
 //------------------------------------------------------------------------------
 
 // 返回一个用于存取专家设置参数的 INI 对象，用户使用后须自己释放
-class function TCnBaseWizard.CreateIniFile(CompilerSection: Boolean): TCustomIniFile;
+function TCnBaseWizard.CreateIniFile(CompilerSection: Boolean): TCustomIniFile;
 var
   Path: string;
 begin
+  if FDefaultsMap = nil then
+    FDefaultsMap := TCnStrToVariantHashMap.Create;
+
   if CompilerSection then
     Path := MakePath(MakePath(WizOptions.RegPath) + GetIDStr) + WizOptions.CompilerID
   else
     Path := MakePath(WizOptions.RegPath) + GetIDStr;
-  Result := TRegistryIniFile.Create(Path, KEY_ALL_ACCESS);
+  Result := TCnWizIniFile.Create(Path, KEY_ALL_ACCESS, FDefaultsMap);
 end;
 
 procedure TCnBaseWizard.DoLoadSettings;
@@ -772,6 +780,11 @@ begin
 end;
 
 procedure TCnBaseWizard.Loaded;
+begin
+  // do nothing
+end;
+
+procedure TCnBaseWizard.LaterLoaded;
 begin
   // do nothing
 end;

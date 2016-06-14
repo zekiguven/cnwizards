@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -379,7 +379,7 @@ var
   Token, CurrMethod, CurrBlock, CurrMidBlock: TCnPasToken;
   SavePos, SaveLineNumber, SaveLinePos: Integer;
   IsClassOpen, IsClassDef, IsImpl, IsHelper: Boolean;
-  IsRecordHelper, IsSealed, IsRecord, IsForFunc: Boolean;
+  IsRecordHelper, IsSealed, IsAbstract, IsRecord, IsForFunc: Boolean;
   DeclareWithEndLevel: Integer;
   PrevTokenID: TTokenKind;
   PrevTokenStr: AnsiString;
@@ -474,15 +474,16 @@ begin
 
     while Lex.TokenID <> tkNull do
     begin
-      if {IsImpl and } (Lex.TokenID in [tkCompDirect, // Allow CompDirect
-        tkProcedure, tkFunction, tkConstructor, tkDestructor,
+      if (Lex.TokenID in [tkCompDirect]) // Allow CompDirect
+        or ((PrevTokenID <> tkAmpersand) and (Lex.TokenID in 
+        [tkProcedure, tkFunction, tkConstructor, tkDestructor,
         tkInitialization, tkFinalization,
         tkBegin, tkAsm,
         tkCase, tkTry, tkRepeat, tkIf, tkFor, tkWith, tkOn, tkWhile,
         tkRecord, tkObject, tkOf, tkEqual,
         tkClass, tkInterface, tkDispInterface,
         tkExcept, tkFinally, tkElse,
-        tkEnd, tkUntil, tkThen, tkDo]) then
+        tkEnd, tkUntil, tkThen, tkDo])) then
       begin
         NewToken;
         case Lex.TokenID of
@@ -624,6 +625,7 @@ begin
             begin
               IsHelper := False;
               IsSealed := False;
+              IsAbstract := False;
               IsClassDef := ((Lex.TokenID = tkClass) and Lex.IsClass)
                 or ((Lex.TokenID = tkInterface) and Lex.IsInterface) or
                 (Lex.TokenID = tkDispInterface);
@@ -636,17 +638,22 @@ begin
                 SaveLinePos := Lex.LinePos;
 
                 LexNextNoJunkWithoutCompDirect(Lex);
-                if Lex.TokenID in [tkSymbol, tkIdentifier] then
+                if Lex.TokenID in [tkSymbol, tkIdentifier, tkSealed, tkAbstract] then
                 begin
                   if LowerCase(string(Lex.Token)) = 'helper' then
                   begin
                     IsClassDef := True;
                     IsHelper := True;
                   end
-                  else if LowerCase(string(Lex.Token)) = 'sealed' then
+                  else if Lex.TokenID = tkSealed then
                   begin
                     IsClassDef := True;
                     IsSealed := True;
+                  end
+                  else if Lex.TokenID = tkAbstract then
+                  begin
+                    IsClassDef := True;
+                    IsAbstract := True;
                   end;
                 end;
                 Lex.LineNumber := SaveLineNumber;
@@ -665,7 +672,7 @@ begin
                 LexNextNoJunkWithoutCompDirect(Lex);
                 if Lex.TokenID = tkSemiColon then // 是个 class; 不需要 end;
                   IsClassOpen := False
-                else if IsHelper or IsSealed then
+                else if IsHelper or IsSealed or IsAbstract then
                   LexNextNoJunkWithoutCompDirect(Lex);
 
                 if Lex.TokenID = tkRoundOpen then // 有括号，看是不是();
@@ -798,7 +805,8 @@ begin
             CurrMethod := nil;
         end;
 
-        if not AKeyOnly then
+        // 需要时，普通标识符加，& 后的标识符也加
+        if not AKeyOnly and ((PrevTokenID <> tkAmpersand) or (Lex.TokenID = tkIdentifier)) then
           NewToken;
       end;
 

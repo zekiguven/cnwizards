@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -1107,7 +1107,6 @@ var
   Element, LineFlag: Integer;
   CurTokens: TList;
   F: string;
-  FEditor: IOTAEditor;
   FSrcEditor: IOTASourceEditor;
 begin
   Result := False;
@@ -1608,17 +1607,8 @@ begin
 {$IFDEF DEBUG}
         CnDebugger.LogMsg('Cpp Another Starting: ' + F);
 {$ENDIF}
-        FEditor := CnOtaGetEditor(F);
-        if FEditor = nil then
-          Exit;
 
-        if not Supports(FEditor, IOTASourceEditor, FSrcEditor) then
-          Exit;
-
-        if FSrcEditor.EditViewCount = 0 then
-          Exit;
-
-        EditView := FSrcEditor.EditViews[0];
+        EditView := CnOtaGetTopOpenedEditViewFromFileName(F);
         if EditView = nil then
           Exit;
 
@@ -2313,17 +2303,8 @@ begin
 {$IFDEF DEBUG}
         CnDebugger.LogMsg('Cpp Another Starting: ' + F);
 {$ENDIF}
-        FEditor := CnOtaGetEditor(F);
-        if FEditor = nil then
-          Exit;
 
-        if not Supports(FEditor, IOTASourceEditor, FSrcEditor) then
-          Exit;
-
-        if FSrcEditor.EditViewCount = 0 then
-          Exit;
-
-        EditView := FSrcEditor.EditViews[0];
+        EditView := CnOtaGetTopOpenedEditViewFromFileName(F);
         if EditView = nil then
           Exit;
 

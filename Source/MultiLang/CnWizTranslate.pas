@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -890,6 +890,7 @@ begin
   TranslateStr(SCnPaletteMoreCaption, 'SCnPaletteMoreCaption');
   
   TranslateStr(SCnSearchComponent, 'SCnSearchComponent');
+  TranslateStr(SCnPalSettingsCaption, 'SCnPalSettingsCaption');
   TranslateStr(SCnComponentDetailFmt, 'SCnComponentDetailFmt');
 
   // CnVerEnhanceWizard
@@ -965,6 +966,8 @@ begin
   TranslateStr(SCnProjExtFileIsReadOnly, 'SCnProjExtFileIsReadOnly');
   TranslateStr(SCnProjExtCreatePrjListError, 'SCnProjExtCreatePrjListError');
   TranslateStr(SCnProjExtErrorInUse, 'SCnProjExtErrorInUse');
+  TranslateStr(SCnProjExtUsesNoPasPosition, 'SCnProjExtUsesNoPasPosition');
+  TranslateStr(SCnProjExtUsesNoCppPosition, 'SCnProjExtUsesNoCppPosition');
   TranslateStr(SCnProjExtAddExtension, 'SCnProjExtAddExtension');
   TranslateStr(SCnProjExtAddNewText, 'SCnProjExtAddNewText');
   TranslateStr(SCnProjExtCleaningComplete, 'SCnProjExtCleaningComplete');
@@ -1211,6 +1214,7 @@ begin
   TranslateStr(SCnInputHelperSymbolKindError, 'SCnInputHelperSymbolKindError');
   TranslateStr(SCnInputHelperUserMacroCaption, 'SCnInputHelperUserMacroCaption');
   TranslateStr(SCnInputHelperUserMacroPrompt, 'SCnInputHelperUserMacroPrompt');
+  TranslateStr(SCnInputHelperDisableCodeCompletionSucc, 'SCnInputHelperDisableCodeCompletionSucc');
   TranslateStr(SCnKeywordDefault, 'SCnKeywordDefault');
   TranslateStr(SCnKeywordLower, 'SCnKeywordLower');
   TranslateStr(SCnKeywordUpper, 'SCnKeywordUpper');

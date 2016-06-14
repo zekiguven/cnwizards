@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -40,6 +40,8 @@ interface
 
 {$IFDEF CNWIZARDS_CNPALETTEENHANCEWIZARD}
 
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+
 uses
   Windows, Messages, SysUtils, Classes, Graphics,
   Controls, Forms, Dialogs, ExtCtrls, ToolWin, ComCtrls, StdCtrls, TypInfo,
@@ -57,19 +59,21 @@ type
 
   TCnIdeCompType = (ctVCL, ctCLX, ctBoth);
 
-  TCnIdeCompInfo = class(TObject)
+  TCnIdeCompInfo = class(TPersistent)
   private
     FCompName: string;
     FTabName: string;
-    FUnitName: string;
+    FCompUnitName: string;
     FImgIndex: Integer;
     FInternalName: string;
     FCompType: TCnIdeCompType;
   published
     property InternalName: string read FInternalName write FInternalName;
+    {* 带 T 的真正类名}
     property CompName: string read FCompName write FCompName;
+    {* 用来显示的组件名，根据设置可能不带 T 前缀}
     property TabName: string read FTabName write FTabName;
-    property UnitName: string read FUnitName write FUnitName;
+    property CompUnitName: string read FCompUnitName write FCompUnitName;
     property ImgIndex: Integer read FImgIndex write FImgIndex;
     property CompType: TCnIdeCompType read FCompType write FCompType;
   end;
@@ -176,7 +180,9 @@ type
 {$IFDEF COMPILER6_UP}
     FOldDesignerType: string;
     FIsDataModule: Boolean;
-    FOldRootClass: TClass;    
+  {$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    FOldRootClass: TClass;
+  {$ENDIF}
 {$ENDIF}
 
     FShowPrefix: Boolean;
@@ -194,7 +200,12 @@ type
     procedure SetFilterFormStyle(const Value: TCnFilterFormStyle);
     procedure FileNotify(NotifyCode: TOTAFileNotification; const FileName: string);
     procedure UpdateFilterFormStyle;
-    function AddCompImage(AComp: string): Integer;
+    function AddCompImage(const AComp: string): Integer;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    function AddNewCompImage(const AComp: string): Integer;
+{$ELSE}
+    function AddOldCompImage(const AComp: string): Integer;
+{$ENDIF}
     procedure TabsMenuClick(Sender: TObject);
     procedure ActivateDetailHint;
     procedure DeactivateDetailHint;
@@ -242,11 +253,15 @@ type
 var
   CnCompFilterForm: TCnCompFilterForm = nil;
 
+{$ENDIF}
+
 {$ENDIF CNWIZARDS_CNPALETTEENHANCEWIZARD}
 
 implementation
 
 {$IFDEF CNWIZARDS_CNPALETTEENHANCEWIZARD}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
 
 {$R *.DFM}
 
@@ -264,6 +279,7 @@ var
     {$IFDEF COMPILER7_UP} const {$ENDIF} ComponentClasses: array of TComponentClass) = nil;
 
   ComponentTabListMap: TStringList = nil;
+  {* 内部每一行存储的是 ComponentClassName=Page，Object 是 TCnIdeCompType 值}
 
 procedure CnCompRegisterComponents(const Page: string;
   {$IFDEF COMPILER7_UP} const {$ENDIF} ComponentClasses: array of TComponentClass);
@@ -293,7 +309,35 @@ begin
      FOldRegisterComponentsProc(Page, ComponentClasses);
 end;
 
-function TCnCompFilterForm.AddCompImage(AComp: string): Integer;
+function TCnCompFilterForm.AddCompImage(const AComp: string): Integer;
+begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  Result := AddNewCompImage(AComp);
+{$ELSE}
+  Result := AddOldCompImage(AComp);
+{$ENDIF}
+end;
+
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+
+function TCnCompFilterForm.AddNewCompImage(const AComp: string): Integer;
+begin
+  if FCompBmp = nil then
+  begin
+    FCompBmp := TBitmap.Create;
+    FCompBmp.Height := 26;
+    FCompBmp.Width := 26;
+    FCompBmp.Canvas.Brush.Color := clBtnFace;
+  end;
+  FCompBmp.Canvas.FillRect(Rect(0, 0, FCompBmp.Width, FCompBmp.Height));
+
+  CnPaletteWrapper.GetComponentImage(FCompBmp, AComp);
+  Result := ilComps.Add(FCompBmp, nil);
+end;
+
+{$ELSE}
+
+function TCnCompFilterForm.AddOldCompImage(const AComp: string): Integer;
 var
   AClass: TComponentClass;
 {$IFDEF COMPILER6_UP}
@@ -347,6 +391,8 @@ begin
     ;
   end;
 end;
+
+{$ENDIF}
 
 procedure TCnCompFilterForm.LoadComponentsList;
 var
@@ -417,11 +463,11 @@ begin
               Info.CompName := Info.InternalName;
 
             Info.TabName := CnPaletteWrapper.ActiveTab;
-            Info.CompType := ctBoth; // 这种情况下无 VCL/CLX 的处理，所以赋值 both 
+            Info.CompType := ctBoth; // 这种情况下无 VCL/CLX 的处理，所以赋值 both
 
             AClass := GetClass(Info.InternalName);
             if (AClass <> nil) and (PTypeInfo(AClass.ClassInfo).Kind = tkClass) then
-              Info.UnitName := GetTypeData(PTypeInfo(AClass.ClassInfo)).UnitName;
+              Info.CompUnitName := string(GetTypeData(PTypeInfo(AClass.ClassInfo)).UnitName);
 
             FCompList.AddObject(Info.CompName, Info);
           end;
@@ -458,7 +504,7 @@ begin
 
             AClass := GetClass(Info.InternalName);
             if (AClass <> nil) and (PTypeInfo(AClass.ClassInfo).Kind = tkClass) then
-              Info.UnitName := GetTypeData(PTypeInfo(AClass.ClassInfo)).UnitName;
+              Info.CompUnitName := string(GetTypeData(PTypeInfo(AClass.ClassInfo)).UnitName);
 
             FCompList.AddObject(Info.CompName, Info);
           end;
@@ -492,7 +538,7 @@ begin
       CnPaletteWrapper.EndUpdate;
       FPackageChanged := False;
     end;
-    
+
     FJustLoad := True;
     tmrLoad.Enabled := True;
 {$IFDEF DEBUG}
@@ -565,7 +611,7 @@ begin
   pnlComp.Align := alClient;
   pnlTab.Align := alClient;
   pnlComp.BringToFront;
-  
+
   // 覆盖 CnTranslateForm 的 ScreenCenter
   Position := poDesigned;
   FDetailHint := THintWindow.Create(Self);
@@ -578,7 +624,7 @@ begin
   FClassNameList := TStringList.Create;
   FDetailsList := TStringList.Create;
   FNeedRefresh := True;
-  
+
   FRegExpr := TRegExpr.Create;
   FRegExpr.ModifierI := True;
 
@@ -836,7 +882,7 @@ var
 {$IFDEF COMPILER6_UP}
   Root: TPersistent;
   OldGroup: TPersistentClass;
-{$ENDIF}  
+{$ENDIF}
 begin
   try
     if (tbst1.TabIndex <> 0) or (lvComps.SelCount = 0) then Exit;
@@ -1139,7 +1185,7 @@ begin
     if lvComps.Selected.Data <> nil then
     begin
       Info := TCnIdeCompInfo(lvComps.Selected.Data);
-      FDetailStr := Format(SCnComponentDetailFmt, [Info.InternalName, Info.UnitName, Info.TabName]);
+      FDetailStr := Format(SCnComponentDetailFmt, [Info.InternalName, Info.CompUnitName, Info.TabName]);
 
       FClassNameList.Clear;
       AClass := GetClass(Info.InternalName);
@@ -1587,6 +1633,8 @@ finalization
 
   if CnCompFilterForm <> nil then
     FreeAndNil(CnCompFilterForm);
+
+{$ENDIF}
 
 {$ENDIF CNWIZARDS_CNPALETTEENHANCEWIZARD}
 end.

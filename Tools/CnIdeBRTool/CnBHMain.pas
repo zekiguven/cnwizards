@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -181,7 +181,7 @@ const
   SACnRegIDEEntries: array[TCnCompiler] of string =
     ('Delphi\5.0', 'Delphi\6.0', 'Delphi\7.0', 'BDS\2.0', 'BDS\3.0', 'BDS\4.0',
     'BDS\5.0', 'BDS\6.0', 'BDS\7.0', 'BDS\8.0', 'BDS\9.0', 'BDS\10.0', 'BDS\11.0',
-    'BDS\12.0', 'BDS\14.0', 'BDS\15.0', 'BDS\16.0', 'BDS\17.0',
+    'BDS\12.0', 'BDS\14.0', 'BDS\15.0', 'BDS\16.0', 'BDS\17.0', 'BDS\18.0',
     'C++Builder\5.0', 'C++Builder\6.0');
   SCnRegHisProject = '\Closed Projects';
   SCnRegHisFiles = '\Closed Files';
@@ -287,7 +287,7 @@ begin
     if lbxSelectApp.ItemIndex in [Ord(atBDS2005), Ord(atBDS2006), Ord(atDelphi2007),
       Ord(atDelphi2009), Ord(atDelphi2010), Ord(atDelphiXE), Ord(atDelphiXE2),
       Ord(atDelphiXE3), Ord(atDelphiXE4), Ord(atDelphiXE5), Ord(atDelphiXE6),
-      Ord(atDelphiXE7), Ord(atDelphiXE8), Ord(atDelphi10S)] then
+      Ord(atDelphiXE7), Ord(atDelphiXE8), Ord(atDelphi10S), Ord(atDelphi101B)] then
     begin
       lbxBackupOptions.Checked[0] := True;
       lbxBackupOptions.ItemEnabled[0] := False;

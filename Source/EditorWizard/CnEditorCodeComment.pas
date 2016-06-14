@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -29,7 +29,9 @@ unit CnEditorCodeComment;
 * 兼容测试：PWin9X/2000/XP + Delphi 5/6/7 + C++Builder 5/6
 * 本 地 化：该窗体中的字符串均符合本地化处理方式
 * 单元标识：$Id$
-* 修改记录：2002.12.31 V1.0
+* 修改记录：2016.06.09 V1.1
+*               加入保持原始代码缩进的设置
+*           2002.12.31 V1.0
 *               创建单元，实现功能
 ================================================================================
 |</PRE>}
@@ -43,9 +45,12 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, IniFiles, ToolsAPI, CnWizClasses, CnWizUtils, CnConsts, CnCommon,
-  Menus, CnEditorWizard, CnWizConsts, CnEditorCodeTool, CnWizMultiLang;
+  Menus, CnEditorWizard, CnWizConsts, CnEditorCodeTool, CnWizMultiLang,
+  ExtCtrls;
 
 type
+  TCnIndentMode = (imInsertToHead, imInsertToNonSpace, imReplaceHeadSpace);
+  // 注释插入模式，行头、行非空格头、替换行头空格（如果有）
 
 //==============================================================================
 // 代码块注释工具类
@@ -90,6 +95,8 @@ type
     Inited: Boolean;
     FirstIsCommented: Boolean;
     FMoveToNextLine: Boolean;
+    FIndentMode: TCnIndentMode;
+    procedure SetIndentMode(const Value: TCnIndentMode);
   protected
     function GetHasConfig: Boolean; override;
     function ProcessLine(const Str: string): string; override;
@@ -104,7 +111,8 @@ type
     procedure Execute; override;
     procedure Config; override;
   published
-    property MoveToNextLine: Boolean read FMoveToNextLine write FMoveToNextLine default True;    
+    property MoveToNextLine: Boolean read FMoveToNextLine write FMoveToNextLine default True;
+    property IndentMode: TCnIndentMode read FIndentMode write SetIndentMode;
   end;
 
   TCnEditorCodeCommentForm = class(TCnTranslateForm)
@@ -112,7 +120,7 @@ type
     chkMoveToNextLine: TCheckBox;
     btnOK: TButton;
     btnCancel: TButton;
-  private
+    rgIndentMode: TRadioGroup;private
     { Private declarations }
   public
     { Public declarations }
@@ -126,9 +134,43 @@ implementation
 
 {$IFDEF CNWIZARDS_CNEDITORWIZARD}
 
+var
+  InternalIndentMode: TCnIndentMode = imInsertToHead;
+
 function GetCommentStr(const Str: string): string;
+var
+  I, L: Integer;
 begin
-  Result := '//' + Str;
+  case InternalIndentMode of
+  imInsertToHead:
+    begin
+      Result := '//' + Str;
+    end;
+  imInsertToNonSpace:
+    begin
+      Result := Str;
+      L := Length(Result);
+      I := 1;
+      while (I <= L) and (Result[I] <= ' ') do
+        Inc(I);
+
+      if I > L then
+      begin
+        Result := '//' + Result; // 全空白
+      end
+      else
+      begin
+        Insert('//', Result, I);
+      end;
+    end;
+  imReplaceHeadSpace:
+    begin
+      if (Length(Str) > 2) and (Str[1] = ' ') and (Str[2] = ' ') then
+        Result := '//' + Copy(Str, 3, MaxInt)
+      else
+        Result := '//' + Str;
+    end;
+  end;
 end;
 
 function IsCommentStr(const Str: string): Boolean;
@@ -144,7 +186,18 @@ end;
 function GetUnCommentStr(const Str: string): string;
 begin
   if IsCommentStr(Str) then
-    Result := StringReplace(Str, '//', '', [])
+  begin
+    case InternalIndentMode of
+    imInsertToHead, imInsertToNonSpace:
+      begin
+        Result := StringReplace(Str, '//', '', []);
+      end;
+    imReplaceHeadSpace:
+      begin
+        Result := StringReplace(Str, '//', '  ', [])
+      end;
+    end;
+  end
   else
     Result := Str;
 end;
@@ -288,14 +341,22 @@ begin
   with TCnEditorCodeCommentForm.Create(nil) do
   try
     chkMoveToNextLine.Checked := FMoveToNextLine;
+    rgIndentMode.ItemIndex := Ord(FIndentMode);
 
     if ShowModal = mrOk then
     begin
-      FMoveToNextLine := chkMoveToNextLine.Checked;
+      MoveToNextLine := chkMoveToNextLine.Checked;
+      IndentMode := TCnIndentMode(rgIndentMode.ItemIndex);
     end;
   finally
     Free;
   end;
+end;
+
+procedure TCnEditorCodeToggleComment.SetIndentMode(const Value: TCnIndentMode);
+begin
+  FIndentMode := Value;
+  InternalIndentMode := Value;
 end;
 
 initialization

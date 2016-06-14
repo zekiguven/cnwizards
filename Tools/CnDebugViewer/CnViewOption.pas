@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -62,6 +62,8 @@ type
     lblPort: TLabel;
     dlgFont: TFontDialog;
     btnFont: TButton;
+    lblRestart: TLabel;
+    chkLocalSession: TCheckBox;
     procedure chkShowTrayIconClick(Sender: TObject);
     procedure chkUDPMsgClick(Sender: TObject);
     procedure btnFontClick(Sender: TObject);
@@ -103,6 +105,7 @@ begin
     chkSaveFormPosition.Checked := SaveFormPosition;
     hkShowFormHotKey.HotKey := MainShortCut;
     chkCapDebug.Checked := not IgnoreODString;
+    chkLocalSession.Checked := LocalSession;
     chkUDPMsg.Checked := EnableUDPMsg;
     seUDPPort.Value := UDPPort;
     SwitchTrayIconControls(ShowTrayIcon);
@@ -127,6 +130,7 @@ begin
     SaveFormPosition := chkSaveFormPosition.Checked;
     MainShortCut := hkShowFormHotKey.HotKey;
     IgnoreODString := not chkCapDebug.Checked;
+    LocalSession := chkLocalSession.Checked;
     EnableUDPMsg := chkUDPMsg.Checked;
     UDPPort := seUDPPort.Value;
 

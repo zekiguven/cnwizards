@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -71,7 +71,7 @@ uses
   DsgnIntf, LibIntf,
   {$ENDIF}
   {$IFDEF DELPHIXE3_UP}Actions,{$ENDIF}
-  Clipbrd, TypInfo, ComCtrls, StdCtrls, Imm, Contnrs, RegExpr,
+  Clipbrd, TypInfo, ComCtrls, StdCtrls, Imm, Contnrs, RegExpr, CnWizCompilerConst,
   CnWizConsts, CnCommon, CnConsts, CnWideStrings, CnWizClasses, CnWizIni;
 
 type
@@ -123,6 +123,14 @@ function CnIntToInterface(AInt: Integer): IUnknown;
 {* 供 Pascal Script 使用的将整型值转换成 TObject 的函数}
 function CnInterfaceToInt(Intf: IUnknown): Integer;
 {* 供 Pascal Script 使用的将 TObject 转换成整型值的函数}
+function CnGetClassFromClassName(const AClassName: string): Integer;
+{* 供 Pascal Script 使用的从类名获取类信息并转换成整型值的函数}
+function CnGetClassFromObject(AObject: TObject): Integer;
+{* 供 Pascal Script 使用的从对象获取类信息并转换成整型值的函数}
+function CnGetClassNameFromClass(AClass: Integer): string;
+{* 供 Pascal Script 使用的从整型的类信息获取类名的函数}
+function CnGetClassParentFromClass(AClass: Integer): Integer;
+{* 供 Pascal Script 使用的从整型的类信息获取父类信息的函数}
 
 function CnWizLoadIcon(AIcon: TIcon; const ResName: string): Boolean;
 {* 从资源或文件中装载图标，执行时先从图标目录中查找，如果失败再从资源中查找，
@@ -269,6 +277,12 @@ function CurrentIsCSource: Boolean;
 {* 当前编辑的文件是C源文件}
 function CurrentIsSource: Boolean;
 {* 当前编辑的文件是Delphi或C源文件}
+function CurrentSourceIsDelphi: Boolean;
+{* 当前编辑的源文件（非窗体）是Delphi源文件}
+function CurrentSourceIsC: Boolean;
+{* 当前编辑的源文件（非窗体）是C源文件}
+function CurrentSourceIsDelphiOrCSource: Boolean;
+{* 当前编辑的源文件（非窗体）是Delphi或C源文件}
 function CurrentIsForm: Boolean;
 {* 当前编辑的文件是窗体文件}
 function IsVCLFormEditor(FormEditor: IOTAFormEditor = nil): Boolean;
@@ -358,6 +372,8 @@ function CnOtaGetEditBuffer: IOTAEditBuffer;
 {* 取IOTAEditBuffer接口}
 function CnOtaGetEditPosition: IOTAEditPosition;
 {* 取IOTAEditPosition接口}
+function CnOtaGetTopOpenedEditViewFromFileName(const FileName: string; ForceOpen: Boolean = True): IOTAEditView;
+{* 根据文件名返回编辑器中打开的第一个 EditView，未打开时如 ForceOpen 为 True 则尝试打开，否则返回 nil}
 function CnOtaGetTopMostEditView: IOTAEditView; overload;
 {* 取当前最前端的IOTAEditView接口}
 function CnOtaGetTopMostEditView(SourceEditor: IOTASourceEditor): IOTAEditView; overload;
@@ -375,9 +391,9 @@ function CnOtaGetFormEditorFromModule(const Module: IOTAModule): IOTAFormEditor;
 function CnOtaGetCurrentFormEditor: IOTAFormEditor;
 {* 取当前窗体编辑器}
 function CnOtaGetDesignContainerFromEditor(FormEditor: IOTAFormEditor): TWinControl;
-{* 取得窗体编辑器的容器控件}
+{* 取得窗体编辑器的容器控件或 DataModule 的容器}
 function CnOtaGetCurrentDesignContainer: TWinControl;
-{* 取得当前窗体编辑器的容器控件}
+{* 取得当前窗体编辑器的容器控件或 DataModule 的容器}
 function CnOtaGetSelectedControlFromCurrentForm(List: TList): Boolean;
 {* 取得当前窗体编辑器的已选择的控件}
 function CnOtaShowFormForModule(const Module: IOTAModule): Boolean;
@@ -401,7 +417,7 @@ function CnOtaGetModuleFromProjectByIndex(Project: IOTAProject; Index: Integer):
 function CnOtaGetEditor(const FileName: string): IOTAEditor;
 {* 根据文件名返回编辑器接口}
 function CnOtaGetRootComponentFromEditor(Editor: IOTAFormEditor): TComponent;
-{* 返回窗体编辑器设计窗体组件}
+{* 返回窗体编辑器设计窗体组件，或 DataModule 设计器的实例}
 function CnOtaGetCurrentEditWindow: TCustomForm;
 {* 取当前的 EditWindow}
 function CnOtaGetCurrentEditControl: TWinControl;
@@ -517,7 +533,7 @@ function CnOtaGetCurrentOuterBlock: string;
 {* 获取当前光标所在的类名或声明}
 function CnOtaGetLineText(LineNum: Integer; EditBuffer: IOTAEditBuffer = nil;
   Count: Integer = 1): string;
-{* 取指定行的源代码}
+{* 取指定行的源代码，行号以 1 开始，返回结果为 Ansi/Unicode，非 UTF8}
 function CnOtaGetCurrLineText(var Text: string; var LineNo: Integer;
   var CharIndex: Integer; View: IOTAEditView = nil): Boolean;
 {* 取当前行源代码}
@@ -635,6 +651,11 @@ function FastUtf8ToAnsi(const Text: AnsiString): AnsiString;
 {* 快速转换Utf8到Ansi字符串，适用于长度短且主要是Ansi字符的字符串 }
 {$ENDIF}
 
+{$IFDEF UNICODE}
+function ConvertTextToEditorUnicodeText(const Text: string): string;
+{* Unicode 环境下转换字符串为编辑器使用的字符串，避免 AnsiString 转换}
+{$ENDIF}
+
 function ConvertTextToEditorText(const Text: AnsiString): AnsiString;
 {* 转换字符串为编辑器使用的字符串 }
 
@@ -728,20 +749,23 @@ function CnOtaLinePosToEditPos(LinePos: Integer; EditView: IOTAEditView = nil): 
 
 procedure CnOtaSaveReaderToStream(EditReader: IOTAEditReader; Stream:
   TMemoryStream; StartPos: Integer = 0; EndPos: Integer = 0;
-  PreSize: Integer = 0; CheckUtf8: Boolean = True);
-{* 保存EditReader内容到流中，流中的内容默认为 Ansi 格式，带末尾 #0 字符}
+  PreSize: Integer = 0; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False);
+{* 保存EditReader内容到流中，流中的内容默认为 Ansi 格式，带末尾 #0 字符，
+   AlternativeWideChar 表示 CheckUtf8 为 True 时，在纯英文 OS 的 Unicode 环境下，
+   是否将转换成的 Ansi 中的每个宽字符手动替换成两个空格。此选项用于躲过纯英文 OS
+   的 Unicode 环境下 UnicodeString 直接转 Ansi 时的丢字符问题}
 
 procedure CnOtaSaveEditorToStreamEx(Editor: IOTASourceEditor; Stream:
   TMemoryStream; StartPos: Integer = 0; EndPos: Integer = 0;
-  PreSize: Integer = 0; CheckUtf8: Boolean = True);
+  PreSize: Integer = 0; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False);
 {* 保存编辑器文本到流中}
 
 function CnOtaSaveEditorToStream(Editor: IOTASourceEditor; Stream: TMemoryStream;
-  FromCurrPos: Boolean = False; CheckUtf8: Boolean = True): Boolean;
+  FromCurrPos: Boolean = False; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False): Boolean;
 {* 保存编辑器文本到流中}
 
 function CnOtaSaveCurrentEditorToStream(Stream: TMemoryStream; FromCurrPos:
-  Boolean; CheckUtf8: Boolean = True): Boolean;
+  Boolean; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False): Boolean;
 {* 保存当前编辑器文本到流中}
 
 function CnOtaGetCurrentEditorSource(CheckUtf8: Boolean = True): string;
@@ -929,7 +953,7 @@ uses
 {$ENDIF}
   Math, CnWizOptions, CnGraphUtils
 {$IFNDEF CNWIZARDS_MINIMUM}
-  , CnWizMultiLang, CnLangMgr, CnWizIdeUtils, CnWizDebuggerNotifier,
+  , CnWizMultiLang, CnLangMgr, CnWizIdeUtils, CnWizDebuggerNotifier, CnEditControlWrapper,
   CnPasCodeParser, CnCppCodeParser, CnLangStorage, CnHashLangStorage, CnWizHelp
 {$ENDIF}
   ;
@@ -1003,6 +1027,30 @@ end;
 function CnInterfaceToInt(Intf: IUnknown): Integer;
 begin
   Result := Integer(Intf);
+end;
+
+// 供 Pascal Script 使用的从类名获取类信息并转换成整型值的函数
+function CnGetClassFromClassName(const AClassName: string): Integer;
+begin
+  Result := Integer(GetClass(AClassName));
+end;
+
+// 供 Pascal Script 使用的从对象获取类信息并转换成整型值的函数
+function CnGetClassFromObject(AObject: TObject): Integer;
+begin
+  Result := Integer(AObject.ClassType);
+end;
+
+// 供 Pascal Script 使用的从整型的类信息获取类名的函数
+function CnGetClassNameFromClass(AClass: Integer): string;
+begin
+  Result := TClass(AClass).ClassName;
+end;
+
+// 供 Pascal Script 使用的从整型的类信息获取父类信息的函数
+function CnGetClassParentFromClass(AClass: Integer): Integer;
+begin
+  Result := Integer(TClass(AClass).ClassParent);
 end;
 
 var
@@ -2099,6 +2147,24 @@ begin
 {$ENDIF}
 end;
 
+// 当前编辑的源文件（非窗体）是Delphi源文件
+function CurrentSourceIsDelphi: Boolean;
+begin
+  Result := WizOptions.IsDelphiSource(CnOtaGetCurrentSourceFileName);
+end;
+
+// 当前编辑的源文件（非窗体）是C源文件
+function CurrentSourceIsC: Boolean;
+begin
+  Result := WizOptions.IsCSource(CnOtaGetCurrentSourceFileName);
+end;
+
+// 当前编辑的源文件（非窗体）是Delphi或C源文件
+function CurrentSourceIsDelphiOrCSource: Boolean;
+begin
+  Result := CurrentSourceIsDelphi or CurrentSourceIsC;
+end;
+
 // 当前编辑的文件是窗体文件
 function CurrentIsForm: Boolean;
 begin
@@ -2454,6 +2520,30 @@ begin
   Result := nil;
 end;
 
+// 根据文件名返回编辑器中打开的第一个 EditView，未打开时如 ForceOpen 为 True 则尝试打开，否则返回 nil
+function CnOtaGetTopOpenedEditViewFromFileName(const FileName: string;
+  ForceOpen: Boolean): IOTAEditView;
+var
+  Editor: IOTAEditor;
+  SrcEditor: IOTASourceEditor;
+begin
+  Result := nil;
+  Editor := CnOtaGetEditor(FileName);
+  if (Editor = nil) and not ForceOpen then
+    Exit;
+
+  if not CnOtaOpenFile(FileName) then
+    Exit;
+
+  if not Supports(Editor, IOTASourceEditor, SrcEditor) then
+    Exit;
+
+  if SrcEditor.EditViewCount = 0 then
+    Exit;
+
+  Result := SrcEditor.EditViews[0];
+end;
+
 // 取当前最前端的IOTAEditView接口
 function CnOtaGetTopMostEditView: IOTAEditView;
 var
@@ -2525,7 +2615,6 @@ function CnOtaGetCurrentSourceEditor: IOTASourceEditor;
 var
   EditBuffer: IOTAEditBuffer;
 begin
-  Result := nil;
   EditBuffer := CnOtaGetEditBuffer;
   if Assigned(EditBuffer) and (EditBuffer.FileName <> '') then
     Result := CnOtaGetSourceEditorFromModule(CnOtaGetCurrentModule, EditBuffer.FileName);
@@ -2586,12 +2675,12 @@ begin
   Result := nil;
 end;
 
-// 取得窗体编辑器的容器控件
+// 取得窗体编辑器的容器控件或 DataModule 的容器
 function CnOtaGetDesignContainerFromEditor(FormEditor: IOTAFormEditor): TWinControl;
 var
   Root: TComponent;
 begin
-  { TODO : 支持为 Root 非 TWinControl 的设计对象取其 Container }
+  { 支持为 Root 非 TWinControl 的设计对象取其 Container }
   Result := nil;
   Root := CnOtaGetRootComponentFromEditor(FormEditor);
   if Root is TWinControl then
@@ -2599,10 +2688,15 @@ begin
     Result := Root as TWinControl;
     while Assigned(Result) and Assigned(Result.Parent) do
       Result := Result.Parent;
+  end
+  else if (Root is TDataModule) and (Root.Owner <> nil) and (Root.Owner is TWinControl) then
+  begin
+    // DataModule 实例的 Owner 是设计器容器 TDataModuleDesigner
+    Result := TWinControl(Root.Owner);
   end;
 end;
 
-// 取得当前窗体编辑器的容器控件
+// 取得当前窗体编辑器的容器控件或 DataModule 的容器
 function CnOtaGetCurrentDesignContainer: TWinControl;
 begin
   if CurrentIsForm then
@@ -3500,17 +3594,19 @@ end;
 // 返回指定模块指定文件名的单元编辑器
 function CnOtaGetSourceEditorFromModule(Module: IOTAModule; const FileName: string): IOTASourceEditor;
 var
-  i: Integer;
+  I: Integer;
   IEditor: IOTAEditor;
   ISourceEditor: IOTASourceEditor;
 begin
-  Result := nil;
   if not Assigned(Module) then
-    Exit;
-
-  for i := 0 to Module.GetModuleFileCount-1 do
   begin
-    IEditor := CnOtaGetFileEditorForModule(Module, i);
+    Result := nil;
+    Exit;
+  end;
+
+  for I := 0 to Module.GetModuleFileCount - 1 do
+  begin
+    IEditor := CnOtaGetFileEditorForModule(Module, I);
 
     if Supports(IEditor, IOTASourceEditor, ISourceEditor) then
     begin
@@ -3519,11 +3615,12 @@ begin
         if (FileName = '') or SameFileName(ISourceEditor.FileName, FileName) then
         begin
           Result := ISourceEditor;
-          Break;
+          Exit;
         end;
       end;
     end;
   end;
+  Result := nil;
 end;
 
 // 返回指定模块指定文件名的编辑器
@@ -3533,7 +3630,7 @@ var
   Editor: IOTAEditor;
 begin
   Assert(Assigned(Module));
-  for i := 0 to Module.GetModuleFileCount-1 do
+  for i := 0 to Module.GetModuleFileCount - 1 do
   begin
     Editor := CnOtaGetFileEditorForModule(Module, i);
     if SameFileName(Editor.FileName, FileName) then
@@ -3886,7 +3983,7 @@ begin
   Parser.Free;
 end;
 
-// 取指定行的源代码
+// 取指定行的源代码，行号以 1 开始，返回结果为 Ansi/Unicode，非 UTF8
 function CnOtaGetLineText(LineNum: Integer; EditBuffer: IOTAEditBuffer = nil;
   Count: Integer = 1): string;
 var
@@ -3990,13 +4087,13 @@ end;
 //   如果要根据 CharIndex 处理 Text，则需要将 Text 转换为 AnsiString
 {
   以如下表格为准：
-                      获取的 Text 格式   CharIndex(CursorPos.Col)  编辑器状态栏的真实列状况（Ansi）
+                      获取的 Text 格式   CharIndex(CursorPos.Col)  编辑器状态栏的真实列状况（Ansi）   TOTACharPos
 
-  Delphi5/6/7         Ansi               同左、一致                同左、一致
+  Delphi5/6/7         Ansi               同左、一致                同左、一致                         Ansi
 
-  Delphi 2005~2007    Ansi with UTF8     同左、与 UTF8 一致        Ansi、与 TF8 不一致
+  Delphi 2005~2007    Ansi with UTF8     同左、与 UTF8 一致        Ansi、与 UTF8 不一致               Utf8
 
-  Delphi 2009~        UTF16              Ansi、与 UTF16 不一致     同左 Ansi、与 UTF16 不一致
+  Delphi 2009~        UTF16              Ansi、与 UTF16 不一致     同左 Ansi、与 UTF16 不一致         Utf8，为啥？
 }
 function CnNtaGetCurrLineText(var Text: string; var LineNo: Integer;
   var CharIndex: Integer): Boolean;
@@ -4098,7 +4195,11 @@ begin
     if CheckCursorOutOfLineEnd and CnOtaIsEditPosOutOfLine(EditView.CursorPos) then
       Exit;
 
-    AnsiText := AnsiString(LineText);
+    if _UNICODE_STRING and CodePageOnlySupportsEnglish then // 纯英文 Unicode 环境下不能直接转 Ansi
+      AnsiText := ConvertUtf16ToAlterAnsi(PWideChar(LineText), 'C')
+    else
+      AnsiText := AnsiString(LineText);
+
     i := CharIndex;
     CurrIndex := 0;
     // 查找起始字符
@@ -4297,11 +4398,19 @@ begin
   Result := _DeleteCurrToken(False, True, FirstSet, CharSet);
 end;
 
-// 判断位置是否超出行尾了。此机制在 Unicode 环境下当前行含有超过一个宽字符时可能会不准，慎用
+// 判断位置是否超出行尾了。此机制在 Unicode 环境下当前行含有宽字符时可能会不准，慎用
+// 一般 Unicode 环境下，行内含有几个宽字符，使用 ConvertPos 就会可能产生几列的偏差，
+// 也即超过行尾再加几列才会判断为超出行尾，而且这个规则还不靠谱，需要另做处理
 function CnOtaIsEditPosOutOfLine(EditPos: TOTAEditPos; View: IOTAEditView): Boolean;
 var
   APos: TOTAEditPos;
   CPos: TOTACharPos;
+{$IFDEF UNICODE}
+  EditControl: TControl;
+  S: AnsiString;
+  I, Idx, Len: Integer;
+  HasWide: Boolean;
+{$ENDIF}
 begin
   Result := True;
   if View = nil then
@@ -4315,6 +4424,41 @@ begin
 //   [EditPos.Line, EditPos.Col, APos.Line, APos.Col]);
 {$ENDIF}
     Result := not SameEditPos(EditPos, APos);
+
+{$IFDEF UNICODE}
+    // Unicode 环境下可能有误差，补算一把
+    EditControl := EditControlWrapper.GetEditControl(View);
+    if EditControl = nil then
+      Exit;
+
+    // 使用 EditControlWrapper.GetTextAtLine 较快获取行文字，并且 Tab 已展开
+    S := AnsiString(TrimRight(EditControlWrapper.GetTextAtLine(EditControl, EditPos.Line)));
+    if S = '' then
+      Exit;
+
+    HasWide := False;
+    Idx := -1;
+    Len := Length(S);
+
+    for I := 1 to Len do
+    begin
+      if Ord(S[I]) > 127 then
+      begin
+        HasWide := True;
+        Idx := I;
+        Break;
+      end;
+    end;
+
+    if not HasWide then
+      Exit;
+    if EditPos.Col < Idx + 1 then
+      Exit;
+
+    // Unicode 环境下含有双字节字符时，并且需要判断的位置在第一个双字节字符后时
+    // 可能有偏差，换这种判断方式。
+    Result := EditPos.Col > Len + 1; // Col is 0 based.
+{$ENDIF}
   end;  
 end;
 {$ENDIF}
@@ -5010,6 +5154,16 @@ end;
 
 {$ENDIF}
 
+{$IFDEF UNICODE}
+
+// Unicode 环境下转换字符串为编辑器使用的字符串，避免 AnsiString 转换
+function ConvertTextToEditorUnicodeText(const Text: string): string;
+begin
+  Result := Text;
+end;
+
+{$ENDIF}
+
 // 转换字符串为编辑器使用的字符串
 function ConvertTextToEditorText(const Text: AnsiString): AnsiString;
 begin
@@ -5344,7 +5498,7 @@ end;
 // 保存EditReader内容到流中，流中的内容默认为 Ansi 格式
 procedure CnOtaSaveReaderToStream(EditReader: IOTAEditReader; Stream:
   TMemoryStream; StartPos: Integer = 0; EndPos: Integer = 0;
-  PreSize: Integer = 0; CheckUtf8: Boolean = True);
+  PreSize: Integer = 0; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False);
 const
   // Leave typed constant as is - needed for streaming code.
   TerminatingNulChar: Char = #0;
@@ -5357,6 +5511,11 @@ var
 {$IFDEF IDE_WIDECONTROL}
   Text: AnsiString;
 {$ENDIF}
+
+{$IFDEF UNICODE}
+  UniText: string;
+{$ENDIF}
+
 begin
   Assert(EditReader <> nil);
   Assert(Stream <> nil);
@@ -5402,7 +5561,23 @@ begin
 {$IFDEF IDE_WIDECONTROL}
   if CheckUtf8 then
   begin
-    Text := CnUtf8ToAnsi(PAnsiChar(Stream.Memory));
+    AlternativeWideChar := AlternativeWideChar and _UNICODE_STRING and CodePageOnlySupportsEnglish;
+
+    if AlternativeWideChar then
+    begin
+{$IFDEF UNICODE}
+      // Unicode 环境里在纯英文 OS 下不能按照后面的转 Ansi，以免丢字符。
+      // 需要转成 UTF16 的再硬替成 Ansi。
+      UniText := Utf8Decode(PAnsiChar(Stream.Memory));
+      Text := ConvertUtf16ToAlterAnsi(PWideChar(UniText));
+{$ELSE}
+      Text := CnUtf8ToAnsi(PAnsiChar(Stream.Memory));
+{$ENDIF}
+    end
+    else
+    begin
+      Text := CnUtf8ToAnsi(PAnsiChar(Stream.Memory));
+    end;
     Stream.Size := Length(Text) + 1;
     Stream.Position := 0;
     Stream.Write(PAnsiChar(Text)^, Length(Text) + 1);
@@ -5415,7 +5590,7 @@ end;
 // 保存编辑器文本到流中
 procedure CnOtaSaveEditorToStreamEx(Editor: IOTASourceEditor; Stream:
   TMemoryStream; StartPos: Integer = 0; EndPos: Integer = 0;
-  PreSize: Integer = 0; CheckUtf8: Boolean = True);
+  PreSize: Integer = 0; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False);
 begin
   if Editor = nil then
   begin
@@ -5424,12 +5599,12 @@ begin
       Exit;
   end;
 
-  CnOtaSaveReaderToStream(Editor.CreateReader, Stream, StartPos, EndPos, PreSize, CheckUtf8);
+  CnOtaSaveReaderToStream(Editor.CreateReader, Stream, StartPos, EndPos, PreSize, CheckUtf8, AlternativeWideChar);
 end;
 
 // 保存编辑器文本到流中
 function CnOtaSaveEditorToStream(Editor: IOTASourceEditor; Stream: TMemoryStream;
-  FromCurrPos: Boolean = False; CheckUtf8: Boolean = True): Boolean;
+  FromCurrPos: Boolean = False; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False): Boolean;
 var
   IPos: Integer;
   PreSize: Integer;
@@ -5462,16 +5637,16 @@ begin
     if PreSize < 0 then
       PreSize := 0;
 
-    CnOtaSaveEditorToStreamEx(Editor, Stream, IPos, 0, PreSize, CheckUtf8);
+    CnOtaSaveEditorToStreamEx(Editor, Stream, IPos, 0, PreSize, CheckUtf8, AlternativeWideChar);
     Result := True;
   end;
 end;
 
 // 保存当前编辑器文本到流中
 function CnOtaSaveCurrentEditorToStream(Stream: TMemoryStream; FromCurrPos:
-  Boolean; CheckUtf8: Boolean = True): Boolean;
+  Boolean; CheckUtf8: Boolean = True; AlternativeWideChar: Boolean = False): Boolean;
 begin
-  Result := CnOtaSaveEditorToStream(nil, Stream, FromCurrPos, CheckUtf8);
+  Result := CnOtaSaveEditorToStream(nil, Stream, FromCurrPos, CheckUtf8, AlternativeWideChar);
 end;
 
 // 取得当前编辑器源代码

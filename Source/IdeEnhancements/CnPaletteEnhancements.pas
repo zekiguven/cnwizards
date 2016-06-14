@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -61,7 +61,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ToolsAPI, IniFiles,
   Forms, ExtCtrls, Menus, ComCtrls, Contnrs, StdCtrls, Buttons,
   CnCommon, CnWizUtils, CnWizNotifier, CnWizIdeUtils, CnWizConsts, CnMenuHook,
-  CnConsts, CnCompUtils, CnWizClasses,
+  CnConsts, CnCompUtils, CnWizClasses, CnWizMenuAction,
   {$IFDEF COMPILER7_UP}
   ActnMenus,
   {$ENDIF}
@@ -77,19 +77,6 @@ type
 
   TCnPaletteEnhanceWizard = class(TCnIDEEnhanceWizard)
   private
-  {$IFNDEF COMPILER8_UP}
-    FMultiLine: Boolean;
-    FButtonStyle: Boolean;
-    FTabsMenu: Boolean;
-    FHooked: Boolean;
-    FMenuHook: TCnMenuHook;
-  {$IFDEF COMPILER5}
-    FTabMenuItem: TCnMenuItemDef;
-  {$ENDIF COMPILER5}
-    FMultiLineMenuItem: TCnMenuItemDef;
-    FSearchCompMenuItem: TCnMenuItemDef;
-    FSepMenuItem: TCnSepMenuItemDef;
-  {$ENDIF COMPILER8_UP}
     FMenuLine: Boolean;
     FLockToolbar: Boolean;
     FTempDisableLock: Boolean;
@@ -98,8 +85,7 @@ type
     FMainControlBar: TControlBar;
     FControlBarMenuHook: TCnMenuHook;
     FLockMenuItem: TCnMenuItemDef;
-    FComponentPalette: TTabControl;
-    
+
   {$IFDEF COMPILER7_UP}
     FMenuBar: TActionMainMenuBar;
   {$ENDIF COMPILER7_UP}
@@ -109,56 +95,81 @@ type
     FWizMenu: TMenuItem;
     FWizOptionMenu: TMenuItem;
     FWizSepMenu: TMenuItem;
-  {$IFNDEF COMPILER8_UP}
-    FDivTab: Boolean;
+
+  {$IFDEF FIX_EDITORLINEENDS_BUG}
+    FFixEditorLineEndsBug: Boolean;
+  {$ENDIF}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
     FCompFilter: Boolean;
+    FCompFilterShortCut: TShortCut;
     FCompFilterPnl: TPanel;
     FCompFilterBtn: TSpeedButton;
+    FCompFilterAction: TCnWizAction;
 
     FShowPrefix: Boolean;
     FUseSmallImg: Boolean;
     FShowDetails: Boolean;
     FAutoSelect: Boolean;
+    FSearchCompMenuItem: TCnMenuItemDef;
+    FSettingsMenuItem: TCnMenuItemDef;
+
+  {$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    FComponentPalette: TTabControl;
+    FMultiLine: Boolean;
+    FButtonStyle: Boolean;
+    FTabsMenu: Boolean;
+    FHooked: Boolean;
+    FMenuHook: TCnMenuHook;
+  {$IFDEF COMPILER5}
+    FTabMenuItem: TCnMenuItemDef;
+  {$ENDIF COMPILER5}
+    FMultiLineMenuItem: TCnMenuItemDef;
+    FSepMenuItem: TCnSepMenuItemDef;
+
+    FDivTab: Boolean;
   {$IFDEF COMPILER6_UP}
     FTabPopupItem: TMenuItem;
     FTabOnClick: TNotifyEvent;
-
-
   {$ENDIF COMPILER6_UP}
-  {$ENDIF COMPILER8_UP}
-
-  {$IFDEF FIX_EDITORLINEENDS_BUG}
-    FFixEditorLineEndsBug: Boolean;
-    procedure SetFixEditorLineEndsBug(const Value: Boolean);
+  {$ELSE}
+    FNewComponentPalette: TWinControl;
   {$ENDIF}
 
-  {$IFNDEF COMPILER8_UP}
-    procedure SetFCompFilter(const Value: Boolean);
-    procedure UpdateCompFilterButton;
-    procedure OnCompFilterBtnClick(Sender: TObject);
+    procedure SetCompFilter(const Value: Boolean);
+    procedure SetCompFilterShortCut(const Value: TShortCut);
+    procedure UpdateCompFilterButton(Sender: TObject);
+    procedure OnCompFilterActionExecute(Sender: TObject);
     procedure OnCompFilterStyleChanged(Sender: TObject);
     procedure OnSettingChanged(Sender: TObject);
-    procedure OnActiveFormChanged(Sender: TObject);
-    procedure DoUpdateComponentPalette(AMultiLine: Boolean; AButtonStyle: Boolean);
-    procedure OnMultiLineItemClick(Sender: TObject);
     procedure OnSearchCompItemClick(Sender: TObject);
     procedure OnSearchCompMenuCreated(Sender: TObject; MenuItem: TMenuItem);
+
+  {$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}  // D7 和以下版本才支持多行以及 Tab 相关的菜单挂接
   {$IFDEF COMPILER5}
     procedure OnMenuItemClick(Sender: TObject);
     procedure OnTabMenuCreated(Sender: TObject; MenuItem: TMenuItem);
   {$ELSE}
     procedure OnMenuAfterPopup(Sender: TObject; Menu: TPopupMenu);
   {$ENDIF COMPILER5}
-    procedure OnMultiLineMenuCreated(Sender: TObject; MenuItem: TMenuItem);
 
+    procedure OnActiveFormChanged(Sender: TObject);
+    procedure OnMultiLineItemClick(Sender: TObject);
+    procedure OnMultiLineMenuCreated(Sender: TObject; MenuItem: TMenuItem);
+    procedure DoUpdateComponentPalette(AMultiLine: Boolean; AButtonStyle: Boolean);
+    procedure OnSettingsItemClick(Sender: TObject);
     // 使用类方法是因为该方法可能会在对象被释放后调用
     class procedure ResizeComponentPalette(Sender: TObject);
-
-    procedure RegisterUserMenuItems;
     procedure SetTabsMenu(const Value: Boolean);
     procedure UpdateOtherWindows(OldHeight: Integer);
-  {$ENDIF COMPILER8_UP}
+    procedure RegisterUserMenuItems;
+
     function GetComponentPalette: TTabControl;
+  {$ELSE}
+    function GetNewComponentPalette: TWinControl;
+  {$ENDIF}
+{$ENDIF}
+
     procedure OnIdle(Sender: TObject);
     procedure OnLockMenuCreated(Sender: TObject; MenuItem: TMenuItem);
     procedure OnLockToolbarItemClick(Sender: TObject);
@@ -167,6 +178,9 @@ type
     procedure FinalMenuBar;
   {$ENDIF COMPILER7_UP}
 
+  {$IFDEF FIX_EDITORLINEENDS_BUG}
+    procedure SetFixEditorLineEndsBug(const Value: Boolean);
+  {$ENDIF}
     procedure DoConfig(Sender: TObject);
     procedure OnConfig(Sender: TObject);
     function GetMenuInsertIndex: Integer;
@@ -181,11 +195,16 @@ type
     procedure UpdateToolbarLock;
     procedure MainControlBarOnMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
-
   protected
     procedure SetActive(Value: Boolean); override;
     function GetHasConfig: Boolean; override;
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    property NewComponentPalette: TWinControl read GetNewComponentPalette;
+  {$ELSE}
     property ComponentPalette: TTabControl read GetComponentPalette;
+  {$ENDIF}
+{$ENDIF}
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -199,19 +218,23 @@ type
     procedure Config; override;
     procedure UpdateCompPalette;
 
-  {$IFNDEF COMPILER8_UP}
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+
+  {$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
     property TabsMenu: Boolean read FTabsMenu write SetTabsMenu;
     property MultiLine: Boolean read FMultiLine write FMultiLine;
     property ButtonStyle: Boolean read FButtonStyle write FButtonStyle;
     property DivTab: Boolean read FDivTab write FDivTab;
-    property CompFilter: Boolean read FCompFilter write SetFCompFilter;
+  {$ENDIF}
+
+    property CompFilter: Boolean read FCompFilter write SetCompFilter;
+    property CompFilterShortCut: TShortCut read FCompFilterShortCut write SetCompFilterShortCut;
 
     property ShowPrefix: Boolean read FShowPrefix write FShowPrefix;
     property UseSmallImg: Boolean read FUseSmallImg write FUseSmallImg;
     property ShowDetails: Boolean read FShowDetails write FShowDetails;
     property AutoSelect: Boolean read FAutoSelect write FAutoSelect;
-
-  {$ENDIF COMPILER8_UP}
+{$ENDIF}
 
   {$IFDEF COMPILER8_UP}
     property FixEditorLineEndsBug: Boolean read FFixEditorLineEndsBug write SetFixEditorLineEndsBug;
@@ -234,7 +257,7 @@ uses
   CnDebug,
 {$ENDIF}
   CnPaletteEnhanceFrm
-{$IFNDEF COMPILER8_UP}
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
   , CnCompFilterFrm
 {$ENDIF}
   ;
@@ -254,13 +277,24 @@ const
   csDivTabMenu = 'DivTabMenu';
   csLockToolbar = 'LockToolbar';
 
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  csCompFilter = 'CompFilterInNewStyle';
+{$ELSE}
   csCompFilter = 'CompFilter';
+{$ENDIF}
+  csCompFilterShortCut = 'CompFilterShortCut';
   csShowPrefix = 'ShowPrefix';
   csUseSmallImg = 'UseSmallImg';
   csShowDetails = 'ShowDetails';
   csAutoSelect = 'AutoSelect';
 
   SCN_EDITORLINEENDS_FILE = 'EditorLineEnds.ttr';
+
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  CompFilterDef = False;
+{$ELSE}
+  CompFilterDef = True;
+{$ENDIF}
 
 type
   TControlHack = class(TControl);
@@ -314,6 +348,13 @@ begin
   inherited;
   InitWizMenus;
   InitControlBarMenu;
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  FCompFilterAction := WizActionMgr.AddAction('CnCompFilter',
+    SCnSearchComponent, 0, OnCompFilterActionExecute,
+    'CnCompFilter', SCnSearchComponent);
+{$ENDIF}
+
 {$IFNDEF COMPILER8_UP}
   FMenuHook := TCnMenuHook.Create(nil);
   CnWizNotifierServices.AddActiveFormNotifier(OnActiveFormChanged);
@@ -334,14 +375,23 @@ begin
   CnWizNotifierServices.RemoveApplicationIdleNotifier(OnIdle);
   FinalMenuBar;
 {$ENDIF COMPILER7_UP}
+
 {$IFNDEF COMPILER8_UP}
   CnWizNotifierServices.RemoveActiveFormNotifier(OnActiveFormChanged);
   FMenuHook.Free;
 {$ENDIF COMPILER8_UP}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  if FCompFilterAction <> nil then
+    WizActionMgr.DeleteAction(FCompFilterAction);
+{$ENDIF}
   FControlBarMenuHook.Free;
   FinalWizMenus;
   inherited;
 end;
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+{$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
 
 function TCnPaletteEnhanceWizard.GetComponentPalette: TTabControl;
 begin
@@ -352,11 +402,29 @@ begin
   Result := FComponentPalette;
 end;
 
+{$ELSE}
+
+function TCnPaletteEnhanceWizard.GetNewComponentPalette: TWinControl;
+begin
+  if not Assigned(FNewComponentPalette) then
+    FNewComponentPalette := GetNewComponentPaletteComponentPanel;
+
+  // Do NOT Terminate for New ComponentPalette may be Created Later then CnPack Init.
+  // Assert(Assigned(FNewComponentPalette));
+  Result := FNewComponentPalette;
+end;
+
+{$ENDIF}
+{$ENDIF}
+
 //------------------------------------------------------------------------------
 // 组件面板多行切换
 //------------------------------------------------------------------------------
 
-{$IFNDEF COMPILER8_UP}
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+
+{$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+
 procedure TCnPaletteEnhanceWizard.OnActiveFormChanged(Sender: TObject);
 var
   PopupMenu: TPopupMenu;
@@ -451,15 +519,9 @@ begin
   MenuItem.Checked := MultiLine;
 end;
 
-procedure TCnPaletteEnhanceWizard.OnSearchCompMenuCreated(Sender: TObject;
-  MenuItem: TMenuItem);
+procedure TCnPaletteEnhanceWizard.OnSettingsItemClick(Sender: TObject);
 begin
-  MenuItem.Checked := FCompFilter;
-end;
-
-procedure TCnPaletteEnhanceWizard.OnSearchCompItemClick(Sender: TObject);
-begin
-  CompFilter := not CompFilter;
+  Config;
 end;
 
 procedure TCnPaletteEnhanceWizard.UpdateOtherWindows(OldHeight: Integer);
@@ -512,12 +574,18 @@ begin
   FMultiLineMenuItem.OnCreated := OnMultiLineMenuCreated;
   FMenuHook.AddMenuItemDef(FMultiLineMenuItem);
 
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
   FSearchCompMenuItem := TCnMenuItemDef.Create(SCnPaletteSearchCompMenuName,
     SCnSearchComponent, OnSearchCompItemClick, ipAfter, SCnPaletteMutiLineMenuName);
 
   FSearchCompMenuItem.OnCreated := OnSearchCompMenuCreated;
   FMenuHook.AddMenuItemDef(FSearchCompMenuItem);
+{$ENDIF}
 
+  FSettingsMenuItem := TCnMenuItemDef.Create(SCnPaletteSettingsMenuName,
+    SCnPalSettingsCaption, OnSettingsItemClick, ipAfter, SCnPaletteSearchCompMenuName);
+
+  FMenuHook.AddMenuItemDef(FSettingsMenuItem);
 {$IFDEF COMPILER5}
   FTabMenuItem := TCnMenuItemDef.Create(SCnPaletteTabsMenuName,
     SCnPaletteTabsMenuCaption, nil, ipFirst, '');
@@ -691,7 +759,9 @@ begin
   FTabsMenu := Value;
 end;
 
-{$ENDIF COMPILER8_UP}
+{$ENDIF}
+
+{$ENDIF}
 
 //------------------------------------------------------------------------------
 // 增加菜单下划线
@@ -735,7 +805,7 @@ begin
   end;
 {$ENDIF COMPILER7_UP}
 
-{$IFNDEF COMPILER8_UP}
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
   if Active and FCompFilter and (FCompFilterBtn <> nil)
     and (CnCompFilterForm <> nil) then
     FCompFilterBtn.Down := not (CnCompFilterForm.FilterFormStyle = fsHidden);
@@ -934,13 +1004,16 @@ begin
   FMultiLine := Ini.ReadBool('', csPalMultiLine, False);
   FButtonStyle := Ini.ReadBool('', csPalButtonStyle, False);
   FDivTab := Ini.ReadBool('', csDivTabMenu, True);
-  FCompFilter := Ini.ReadBool('', csCompFilter, True);
+{$ENDIF COMPILER8_UP}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  FCompFilter := Ini.ReadBool('', csCompFilter, CompFilterDef);
+  FCompFilterShortCut := Ini.ReadInteger('', csCompFilterShortCut, 0);
   FShowPrefix := Ini.ReadBool('', csShowPrefix, False);
   FUseSmallImg := Ini.ReadBool('', csUseSmallImg, False);
   FShowDetails := Ini.ReadBool('',  csShowDetails, True);
   FAutoSelect := Ini.ReadBool('', csAutoSelect, True);
-
-{$ENDIF COMPILER8_UP}
+{$ENDIF}
   FMenuLine := Ini.ReadBool('', csIDEMenuLine, False);
   FLockToolbar := Ini.ReadBool('', csLockToolbar, False);
 
@@ -960,12 +1033,17 @@ begin
   Ini.WriteBool('', csPalMultiLine, FMultiLine);
   Ini.WriteBool('', csPalButtonStyle, FButtonStyle);
   Ini.WriteBool('', csDivTabMenu, FDivTab);
+{$ENDIF COMPILER8_UP}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
   Ini.WriteBool('', csCompFilter, FCompFilter);
+  Ini.WriteInteger('', csCompFilterShortCut, FCompFilterShortCut);
   Ini.WriteBool('', csShowPrefix, FShowPrefix);
   Ini.WriteBool('', csUseSmallImg, FUseSmallImg);
   Ini.WriteBool('',  csShowDetails, FShowDetails);
   Ini.WriteBool('', csAutoSelect, FAutoSelect);
-{$ENDIF COMPILER8_UP}
+{$ENDIF}
+
   Ini.WriteBool('', csIDEMenuLine, FMenuLine);
   Ini.WriteBool('', csLockToolbar, FLockToolbar);
 
@@ -1012,8 +1090,16 @@ begin
     chkMultiLine.Checked := MultiLine;
     chkButtonStyle.Checked := ButtonStyle;
     chkDivTabMenu.Checked := DivTab;
-    chkCompFilter.Checked := CompFilter;
   {$ENDIF COMPILER8_UP}
+
+  {$IFDEF SUPPORTS_PALETTE_ENHANCE}
+    chkCompFilter.Checked := CompFilter;
+    hkCompFilter.HotKey := CompFilterShortCut;
+  {$ELSE}
+    chkCompFilter.Enabled := False;
+    hkCompFilter.Enabled := False;
+  {$ENDIF}
+
     chkMenuLine.Checked := MenuLine;
     chkLockToolbar.Checked := LockToolbar;
 
@@ -1028,8 +1114,13 @@ begin
       MultiLine := chkMultiLine.Checked;
       ButtonStyle := chkButtonStyle.Checked;
       DivTab := chkDivTabMenu.Checked;
-      CompFilter := chkCompFilter.Checked;
     {$ENDIF COMPILER8_UP}
+
+    {$IFDEF SUPPORTS_PALETTE_ENHANCE}
+      CompFilter := chkCompFilter.Checked;
+      CompFilterShortCut := hkCompFilter.HotKey;
+    {$ENDIF}
+
       MenuLine := chkMenuLine.Checked;
       LockToolbar := chkLockToolbar.Checked;
 
@@ -1052,20 +1143,33 @@ begin
   inherited;
   UpdateCompPalette;
   UpdateWizMenus;
-{$IFNDEF COMPILER8_UP}
-  UpdateCompFilterButton;
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  CnWizNotifierServices.ExecuteOnApplicationIdle(UpdateCompFilterButton);
+  {$ELSE}
+  UpdateCompFilterButton(nil);
+  {$ENDIF}
 {$ENDIF}
 end;
 
 procedure TCnPaletteEnhanceWizard.LanguageChanged(Sender: TObject);
 begin
   FWizOptionMenu.Caption := SCnWizConfigCaption;
-{$IFNDEF COMPILER8_UP}
-  UpdateCompFilterButton;
-  if FMultiLineMenuItem <> nil then
-    FMultiLineMenuItem.SetCaption(SCnPaletteMultiLineMenuCaption);
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  CnWizNotifierServices.ExecuteOnApplicationIdle(UpdateCompFilterButton);
+  {$ELSE}
+  UpdateCompFilterButton(nil);
+  {$ENDIF}
   if FSearchCompMenuItem <> nil then
     FSearchCompMenuItem.SetCaption(SCnSearchComponent);
+  if FSettingsMenuItem <> nil then
+    FSettingsMenuItem.SetCaption(SCnPalSettingsCaption);
+{$ENDIF}
+
+{$IFNDEF COMPILER8_UP}
+  if FMultiLineMenuItem <> nil then
+    FMultiLineMenuItem.SetCaption(SCnPaletteMultiLineMenuCaption);
 {$ENDIF}
   FWizOptionMenu.Hint := StripHotkey(SCnWizConfigCaption);
   if FLockMenuItem <> nil then
@@ -1077,8 +1181,15 @@ begin
   inherited;
 {$IFNDEF COMPILER8_UP}
   RegisterUserMenuItems;
-  UpdateCompFilterButton;
 {$ENDIF COMPILER8_UP}
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  CnWizNotifierServices.ExecuteOnApplicationIdle(UpdateCompFilterButton);
+  {$ELSE}
+  UpdateCompFilterButton(nil);
+  {$ENDIF}
+{$ENDIF}
 
 {$IFDEF COMPILER7_UP}
   InitMenuBar;
@@ -1087,34 +1198,59 @@ begin
   UpdateWizMenus;
 end;
 
-{$IFNDEF COMPILER8_UP}
-procedure TCnPaletteEnhanceWizard.SetFCompFilter(const Value: Boolean);
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+
+procedure TCnPaletteEnhanceWizard.SetCompFilter(const Value: Boolean);
 begin
   if FCompFilter <> Value then
   begin
     FCompFilter := Value;
-    UpdateCompFilterButton;
+    {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    CnWizNotifierServices.ExecuteOnApplicationIdle(UpdateCompFilterButton);
+    {$ELSE}
+    UpdateCompFilterButton(nil);
+    {$ENDIF}
   end;
 end;
 
-procedure TCnPaletteEnhanceWizard.UpdateCompFilterButton;
+procedure TCnPaletteEnhanceWizard.SetCompFilterShortCut(
+  const Value: TShortCut);
+begin
+  FCompFilterShortCut := Value;
+  if FCompFilterAction <> nil then
+    FCompFilterAction.ShortCut := Value;
+end;
+
+procedure TCnPaletteEnhanceWizard.UpdateCompFilterButton(Sender: TObject);
 begin
   if Active and FCompFilter then
   begin
+    if FCompFilterAction <> nil then
+      FCompFilterAction.ShortCut := FCompFilterShortCut;
+
     if FCompFilterPnl = nil then
     begin
       FCompFilterPnl := TPanel.Create(Application);
       FCompFilterPnl.Name := 'CnCompFilterPnl';
       FCompFilterPnl.Caption := '';
+    {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+      FCompFilterPnl.Parent := NewComponentPalette;
+    {$ELSE}
       FCompFilterPnl.Parent := ComponentPalette;
+    {$ENDIF}
       FCompFilterPnl.BorderWidth := 0;
       FCompFilterPnl.BevelInner := bvNone;
       FCompFilterPnl.BevelOuter := bvNone;
       FCompFilterPnl.Anchors := [akRight, akBottom];
       FCompFilterPnl.Height := 12;
       FCompFilterPnl.Width := 12;
+    {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+      FCompFilterPnl.Left := NewComponentPalette.Width - FCompFilterPnl.Width - 1;
+      FCompFilterPnl.Top := NewComponentPalette.Height - FCompFilterPnl.Height - 1;
+    {$ELSE}
       FCompFilterPnl.Left := ComponentPalette.Width - FCompFilterPnl.Width - 1;
       FCompFilterPnl.Top := ComponentPalette.Height - FCompFilterPnl.Height - 1;
+    {$ENDIF}
     end;
 
     if FCompFilterBtn = nil then
@@ -1124,7 +1260,7 @@ begin
 
       FCompFilterBtn.Parent := FCompFilterPnl;
       FCompFilterBtn.Flat := True;
-      FCompFilterBtn.OnClick := OnCompFilterBtnClick;
+      FCompFilterBtn.Action := FCompFilterAction;
       FCompFilterBtn.Top := 1;
       FCompFilterBtn.Left := 1;
       FCompFilterBtn.Height := 11;
@@ -1152,7 +1288,7 @@ begin
   end;
 end;
 
-procedure TCnPaletteEnhanceWizard.OnCompFilterBtnClick(Sender: TObject);
+procedure TCnPaletteEnhanceWizard.OnCompFilterActionExecute(Sender: TObject);
 var
   P: TPoint;
 begin
@@ -1208,6 +1344,18 @@ begin
     FUseSmallImg := CnCompFilterForm.UseSmallImg;
   end;
 end;
+
+procedure TCnPaletteEnhanceWizard.OnSearchCompMenuCreated(Sender: TObject;
+  MenuItem: TMenuItem);
+begin
+  MenuItem.Checked := FCompFilter;
+end;
+
+procedure TCnPaletteEnhanceWizard.OnSearchCompItemClick(Sender: TObject);
+begin
+  CompFilter := not CompFilter;
+end;
+
 {$ENDIF}
 
 procedure TCnPaletteEnhanceWizard.SetLockToolbar(const Value: Boolean);

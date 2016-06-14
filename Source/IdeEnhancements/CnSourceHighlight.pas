@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -30,7 +30,7 @@ unit CnSourceHighlight;
 * 备    注：BDS 下 UTF8 的问题有三个地方需要标明：
 *                              D7或以下、  D2009以下的BDS、D2009：
 *           LineText 属性：    AnsiString、UTF8、          UncodeString
-*           EditView.CusorPos：Ansi字节、  UTF8的字节Col、 UTF8的字节Col
+*           EditView.CusorPos：Ansi字节、  UTF8的字节Col、 转成Ansi的字符Col
 *           GetAttributeAtPos：Ansi字节、  UTF8的字节Col、 UTF8的字节Col
 *               因此 D2009 下处理时，需要额外将获得的 UnicodeString 的 LineText
 *               转成 UTF8 来适应相关的 CursorPos 和 GetAttributeAtPos
@@ -38,7 +38,13 @@ unit CnSourceHighlight;
 * 兼容测试：PWin9X/2000/XP + Delphi 5/6/7 + C++Builder 5/6
 * 本 地 化：该单元中的字符串支持本地化处理方式
 * 单元标识：$Id$
-* 修改记录：2014.12.25
+* 修改记录：2016.05.22
+*               修正纯英文环境下 Unicode IDE 内的宽字节字符转换成 Ansi 有误的问题
+*               全文解析时允许将普通宽字节字符替换成单个或两个空格，从而避免直接
+*               转换时被半角问号代替导致计算偏差。
+*           2016.02.05
+*               修正 Unicode IDE 下括号配对功能对于包含汉字的行可能出现位置偏差的问题
+*           2014.12.25
 *               增加高亮光标下配对的条件编译指令功能
 *           2014.09.17
 *               优化高亮当前标识符的绘制性能，感谢vitaliyg2
@@ -47,7 +53,7 @@ unit CnSourceHighlight;
 *           2012.12.24
 *               修复 jtdd 报告的绘制空行分隔线在折叠状态下可能出错的问题
 *           2011.09.04
-*               加入 white_nigger 的修补以针对修复 CloseAll 时出错的问题，待测试
+*               加入 white_nigger 的修补以针对修复 CloseAll 时出错的问题
 *           2010.10.04
 *               2009 以上 Unicode 环境下，各个 Token 的 Col 采用 ConvertPos 进行
 *               转换时，对汉字以及单位置双字节字符等的判断会有错误，因此采用
@@ -162,9 +168,13 @@ type
     property IsMatch: Boolean read FIsMatch write FIsMatch;
     property LastMatchPos: TOTAEditPos read FLastMatchPos write FLastMatchPos;
     property LastPos: TOTAEditPos read FLastPos write FLastPos;
+
+    // 光标下，或主括号的括号字符串、行内容、位置信息
     property TokenStr: AnsiString read FTokenStr write FTokenStr;
     property TokenLine: AnsiString read FTokenLine write FTokenLine;
     property TokenPos: TOTAEditPos read FTokenPos write FTokenPos;
+
+    // 和上面配对的括号字符串、行内容、位置信息
     property TokenMatchStr: AnsiString read FTokenMatchStr write FTokenMatchStr;
     property TokenMatchLine: AnsiString read FTokenMatchLine write FTokenMatchLine;
     property TokenMatchPos: TOTAEditPos read FTokenMatchPos write FTokenMatchPos;
@@ -184,7 +194,7 @@ type
     FControl: TControl;
     FModified: Boolean;
     FChanged: Boolean;
-    FParser: TCnPasStructureParser;
+    FPasParser: TCnPasStructureParser;
 
     // *TokenList 容纳初步解析结果
     FKeyTokenList: TCnList;           // 容纳解析出来的关键字 Tokens
@@ -291,7 +301,7 @@ type
     {* 当前匹配时是否大小写敏感，由外部设定}
     property IsCppSource: Boolean read FIsCppSource write FIsCppSource;
     {* 是否是 C/C++ 文件，默认是 False，也就是 Pascal}
-    property Parser: TCnPasStructureParser read FParser;
+    property PasParser: TCnPasStructureParser read FPasParser;
     property CppParser: TCnCppStructureParser read FCppParser;
 
     property LineInfo: TBlockLineInfo read FLineInfo write FLineInfo;
@@ -465,7 +475,8 @@ type
     FViewChangedList: TList;
     FViewFileNameIsPascalList: TList;
 {$IFDEF BDS}
-    FLineText: AnsiString;
+    FAnsiLineText: AnsiString;
+    FUniLineText: string;
   {$IFDEF BDS2009_UP}
     FUseTabKey: Boolean;
     FTabWidth: Integer;
@@ -485,7 +496,7 @@ type
     FCompDirectiveBackground: TColor;
     function GetColorFg(ALayer: Integer): TColor;
     function EditorGetTextRect(Editor: TEditorObject; APos: TOTAEditPos;
-      const {$IFDEF BDS}LineText, {$ENDIF} AText: AnsiString; var ARect: TRect): Boolean;
+      const {$IFDEF BDS}LineText, {$ENDIF} AText: string; var ARect: TRect): Boolean;
     procedure EditorPaintText(EditControl: TControl; ARect: TRect; AText: AnsiString;
       AColor, AColorBk, AColorBd: TColor; ABold, AItalic, AUnderline: Boolean);
     function IndexOfBracket(EditControl: TControl): Integer;
@@ -845,7 +856,42 @@ begin
   Result := False;
 end;
 
+// 此函数非 Unicode IDE 下不应该被调用
+function ConvertAnsiPositionToUtf8OnUnicodeText(const Text: string;
+  AnsiCol: Integer): Integer;
 {$IFDEF UNICODE}
+var
+  ULine: string;
+  UniCol: Integer;
+  ALine: AnsiString;
+{$ENDIF}
+begin
+  Result := AnsiCol;
+  if Result <= 0 then
+    Exit;
+
+{$IFDEF UNICODE}
+  if CodePageOnlySupportsEnglish then
+  begin
+    UniCol := CalcWideStringLengthFromAnsiOffset(PWideChar(Text), AnsiCol);
+    ULine := Copy(Text, 1, UniCol - 1);
+    ALine := Utf8Encode(ULine);
+    Result := Length(ALine) + 1;
+  end
+  else
+  begin
+    ALine := AnsiString(Text);
+    ALine := Copy(ALine, 1, AnsiCol - 1);         // 按 Ansi 的 Col 截断
+    UniCol := Length(string(ALine)) + 1;          // 转回 Unicode 的 Col
+    ULine := Copy(Text, 1, UniCol - 1);           // 重新截断
+    ALine := CnAnsiToUtf8(AnsiString(ULine));     // 转成 Ansi-Utf8
+    Result := Length(ALine) + 1;                  // 取 UTF8 的长度
+  end;
+{$ENDIF}
+end;
+
+{$IFDEF UNICODE}
+
 function StartWithIgnoreCase(Pattern: PAnsiChar; Content: PAnsiChar): Boolean; inline;
 var
   PP, PC: PAnsiChar;
@@ -876,6 +922,28 @@ begin
   end;
   Result := PP^ = #0;
 end;
+
+function ConvertUtf8PositionToAnsi(const Utf8Text: AnsiString; Utf8Col: Integer): Integer;
+var
+  ALine: AnsiString;
+  ULine: string;
+begin
+  Result := Utf8Col;
+  if Result < 0 then
+    Exit;
+
+  ALine := Copy(Utf8Text, 1, Utf8Col - 1);
+  if CodePageOnlySupportsEnglish then
+  begin
+    ULine := string(ALine);
+    Result := CalcAnsiLengthFromWideString(PWideChar(ULine)) + 1;
+  end
+  else
+  begin
+    Result := Length(CnUtf8ToAnsi(ALine)) + 1;
+  end;
+end;
+
 {$ENDIF}
 
 function CheckIsCompDirectiveToken(AToken: TCnPasToken; IsCpp: Boolean): Boolean;
@@ -1080,6 +1148,7 @@ var
   EditPos: TOTAEditPos;
   i: Integer;
   StartIndex, EndIndex: Integer;
+  UnicodeCanNotDirectlyToAnsi: Boolean;
 
   function IsHighlightKeywords(TokenID: TTokenKind): Boolean;
   var
@@ -1138,6 +1207,7 @@ begin
     Exit;
   end;
 
+  UnicodeCanNotDirectlyToAnsi := _UNICODE_STRING and CodePageOnlySupportsEnglish;
   if not IsDprOrPas(EditView.Buffer.FileName) and not IsInc(EditView.Buffer.FileName) then
   begin
 {$IFDEF DEBUG}
@@ -1156,7 +1226,7 @@ begin
   {$IFDEF DEBUG}
         CnDebugger.LogMsg('Parse Cpp Source file: ' + EditView.Buffer.FileName);
   {$ENDIF}
-        CnOtaSaveEditorToStream(EditView.Buffer, Stream);
+        CnOtaSaveEditorToStream(EditView.Buffer, Stream, False, True, UnicodeCanNotDirectlyToAnsi);
         // 解析当前显示的源文件
         CppParser.ParseSource(PAnsiChar(Stream.Memory), Stream.Size,
           EditView.CursorPos.Line, EditView.CursorPos.Col);
@@ -1196,6 +1266,7 @@ begin
       for I := 0 to KeyCount - 1 do
       begin
         // 转换成 Col 与 Line
+{$IFNDEF BDS2009_UP}
         CharPos := OTACharPos(KeyTokens[I].CharIndex - 1, KeyTokens[I].LineNumber);
         try
           EditView.ConvertPos(False, EditPos, CharPos);
@@ -1204,8 +1275,8 @@ begin
         end;
         // 以上这句 ConvertPos 在 D2009 或以上中带汉字时的结果可能会有偏差，
         // 因此直接采用下面 CharIndex + 1 的方式，但对 Tab 键展开缺乏处理。
-{$IFDEF BDS2009_UP}
-        // if not FHighlight.FUseTabKey then
+{$ELSE}
+        EditPos.Line := KeyTokens[I].LineNumber;
         EditPos.Col := KeyTokens[I].CharIndex + 1;
 {$ENDIF}
         KeyTokens[I].EditCol := EditPos.Col;
@@ -1236,7 +1307,7 @@ begin
   end
   else  // 处理解析 Pascal 中的配对关键字
   begin
-    if Modified or (Parser.Source = '') then
+    if Modified or (PasParser.Source = '') then
     begin
       FIsCppSource := False;
       CaseSensitive := False;
@@ -1245,12 +1316,12 @@ begin
   {$IFDEF DEBUG}
         CnDebugger.LogMsg('Parse Pascal Source file: ' + EditView.Buffer.FileName);
   {$ENDIF}
-        CnOtaSaveEditorToStream(EditView.Buffer, Stream);
+        CnOtaSaveEditorToStream(EditView.Buffer, Stream, False, True, UnicodeCanNotDirectlyToAnsi);
         // 解析当前显示的源文件，需要高亮当前标识符时不设置KeyOnly
 {$IFDEF BDS2009_UP}
-        Parser.TabWidth := FHighlight.FTabWidth;
+        PasParser.TabWidth := FHighlight.FTabWidth;
 {$ENDIF}
-        Parser.ParseSource(PAnsiChar(Stream.Memory),
+        PasParser.ParseSource(PAnsiChar(Stream.Memory),
           IsDpr(EditView.Buffer.FileName),
           not (FHighlight.CurrentTokenHighlight or FHighlight.HighlightFlowStatement));
       finally
@@ -1261,42 +1332,42 @@ begin
     // 解析后再查找当前光标所在的块
     EditPos := EditView.CursorPos;
     EditView.ConvertPos(True, EditPos, CharPos);
-    Parser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
+    PasParser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
     FCurrentBlockSearched := True;
 
     if BlockHighlightRange = brAll then
     begin
       // 处理本单元中的所有需要的匹配
-      for I := 0 to Parser.Count - 1 do
+      for I := 0 to PasParser.Count - 1 do
       begin
-        if IsHighlightKeywords(Parser.Tokens[I].TokenID) then
-          FKeyTokenList.Add(Parser.Tokens[I]);
+        if IsHighlightKeywords(PasParser.Tokens[I].TokenID) then
+          FKeyTokenList.Add(PasParser.Tokens[I]);
       end;
     end
-    else if (BlockHighlightRange = brMethod) and Assigned(Parser.MethodStartToken)
-      and Assigned(Parser.MethodCloseToken) then
+    else if (BlockHighlightRange = brMethod) and Assigned(PasParser.MethodStartToken)
+      and Assigned(PasParser.MethodCloseToken) then
     begin
       // 只把本过程中需要的 Token 加进来
-      for I := Parser.MethodStartToken.ItemIndex to
-        Parser.MethodCloseToken.ItemIndex do
-        if IsHighlightKeywords(Parser.Tokens[I].TokenID) then
-          FKeyTokenList.Add(Parser.Tokens[I]);
+      for I := PasParser.MethodStartToken.ItemIndex to
+        PasParser.MethodCloseToken.ItemIndex do
+        if IsHighlightKeywords(PasParser.Tokens[I].TokenID) then
+          FKeyTokenList.Add(PasParser.Tokens[I]);
     end
-    else if (BlockHighlightRange = brWholeBlock) and Assigned(Parser.BlockStartToken)
-      and Assigned(Parser.BlockCloseToken) then
+    else if (BlockHighlightRange = brWholeBlock) and Assigned(PasParser.BlockStartToken)
+      and Assigned(PasParser.BlockCloseToken) then
     begin
-      for I := Parser.BlockStartToken.ItemIndex to
-        Parser.BlockCloseToken.ItemIndex do
-        if IsHighlightKeywords(Parser.Tokens[I].TokenID) then
-          FKeyTokenList.Add(Parser.Tokens[I]);
+      for I := PasParser.BlockStartToken.ItemIndex to
+        PasParser.BlockCloseToken.ItemIndex do
+        if IsHighlightKeywords(PasParser.Tokens[I].TokenID) then
+          FKeyTokenList.Add(PasParser.Tokens[I]);
     end
-    else if (BlockHighlightRange = brInnerBlock) and Assigned(Parser.InnerBlockStartToken)
-      and Assigned(Parser.InnerBlockCloseToken) then
+    else if (BlockHighlightRange = brInnerBlock) and Assigned(PasParser.InnerBlockStartToken)
+      and Assigned(PasParser.InnerBlockCloseToken) then
     begin
-      for I := Parser.InnerBlockStartToken.ItemIndex to
-        Parser.InnerBlockCloseToken.ItemIndex do
-        if IsHighlightKeywords(Parser.Tokens[I].TokenID) then
-          FKeyTokenList.Add(Parser.Tokens[I]);
+      for I := PasParser.InnerBlockStartToken.ItemIndex to
+        PasParser.InnerBlockCloseToken.ItemIndex do
+        if IsHighlightKeywords(PasParser.Tokens[I].TokenID) then
+          FKeyTokenList.Add(PasParser.Tokens[I]);
     end;
 
     UpdateCurTokenList;
@@ -1314,12 +1385,13 @@ begin
       for I := 0 to KeyCount - 1 do
       begin
         // 转换成 Col 与 Line
+{$IFNDEF BDS2009_UP}
         CharPos := OTACharPos(KeyTokens[I].CharIndex, KeyTokens[I].LineNumber + 1);
         EditView.ConvertPos(False, EditPos, CharPos);
         // TODO: 以上这句在 D2009 中带汉字时结果会有偏差，暂无办法，
         // 因此直接采用下面 CharIndex + 1 的方式，Parser 本身已对 Tab 键展开。
-{$IFDEF BDS2009_UP}
-        // if not FHighlight.FUseTabKey then
+{$ELSE}
+        EditPos.Line := KeyTokens[I].LineNumber + 1;
         EditPos.Col := KeyTokens[I].CharIndex + 1;
 {$ENDIF}
         KeyTokens[I].EditCol := EditPos.Col;
@@ -1430,59 +1502,59 @@ begin
   FFlowTokenList.Clear;
   if not FIsCppSource then
   begin
-    if Assigned(Parser) then
+    if Assigned(PasParser) then
     begin
       if not FCurrentBlockSearched then   // 找当前块，供转换Token位置
       begin
         EditPos := EditView.CursorPos;
         EditView.ConvertPos(True, EditPos, CharPos);
-        Parser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
+        PasParser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
       end;
 
 {$IFDEF DEBUG}
-      if Assigned(Parser.MethodStartToken) and
-        Assigned(Parser.MethodCloseToken) then
+      if Assigned(PasParser.MethodStartToken) and
+        Assigned(PasParser.MethodCloseToken) then
         CnDebugger.LogFmt('CurrentMethod: %s, MethodStartToken: %d, MethodCloseToken: %d',
-          [Parser.CurrentMethod, Parser.MethodStartToken.ItemIndex, Parser.MethodCloseToken.ItemIndex]);
+          [PasParser.CurrentMethod, PasParser.MethodStartToken.ItemIndex, PasParser.MethodCloseToken.ItemIndex]);
 {$ENDIF}
 
-      if Assigned(Parser.MethodStartToken) and
-        Assigned(Parser.MethodCloseToken) then
+      if Assigned(PasParser.MethodStartToken) and
+        Assigned(PasParser.MethodCloseToken) then
       begin
-        FCurMethodStartToken := Parser.MethodStartToken;
-        FCurMethodCloseToken := Parser.MethodCloseToken;
+        FCurMethodStartToken := PasParser.MethodStartToken;
+        FCurMethodCloseToken := PasParser.MethodCloseToken;
       end;
 
       // 无当前过程或高亮所有内容时搜索当前所有标识符，避免只高亮光标出于当前过程内的问题
-      for I := 0 to Parser.Count - 1 do
+      for I := 0 to PasParser.Count - 1 do
       begin
-        CharPos := OTACharPos(Parser.Tokens[I].CharIndex, Parser.Tokens[I].LineNumber + 1);
+        CharPos := OTACharPos(PasParser.Tokens[I].CharIndex, PasParser.Tokens[I].LineNumber + 1);
         EditView.ConvertPos(False, EditPos, CharPos);
         // TODO: 以上这句在 D2009 中带汉字时结果会有偏差，暂无办法，只能按如下修饰
 {$IFDEF BDS2009_UP}
         // if not FHighlight.FUseTabKey then
-        EditPos.Col := Parser.Tokens[I].CharIndex + 1;
+        EditPos.Col := PasParser.Tokens[I].CharIndex + 1;
 {$ENDIF}
-        Parser.Tokens[I].EditCol := EditPos.Col;
-        Parser.Tokens[I].EditLine := EditPos.Line;
+        PasParser.Tokens[I].EditCol := EditPos.Col;
+        PasParser.Tokens[I].EditLine := EditPos.Line;
       end;
 
       // 高亮整个单元时，或当前无块时，高亮整个单元
       if (FCurMethodStartToken = nil) or (FCurMethodCloseToken = nil) or
         (FHighlight.BlockHighlightRange = brAll) then
       begin
-        for I := 0 to Parser.Count - 1 do
+        for I := 0 to PasParser.Count - 1 do
         begin
-          if CheckIsFlowToken(Parser.Tokens[I], FIsCppSource) then
-            FFlowTokenList.Add(Parser.Tokens[I]);
+          if CheckIsFlowToken(PasParser.Tokens[I], FIsCppSource) then
+            FFlowTokenList.Add(PasParser.Tokens[I]);
         end;
       end
       else if (FCurMethodStartToken <> nil) or (FCurMethodCloseToken <> nil) then // 其它范围便默认改为高亮本过程的
       begin
         for I := FCurMethodStartToken.ItemIndex to FCurMethodCloseToken.ItemIndex do
         begin
-          if CheckIsFlowToken(Parser.Tokens[I], FIsCppSource) then
-            FFlowTokenList.Add(Parser.Tokens[I]);
+          if CheckIsFlowToken(PasParser.Tokens[I], FIsCppSource) then
+            FFlowTokenList.Add(PasParser.Tokens[I]);
         end;
       end;
     end;
@@ -1585,27 +1657,27 @@ begin
   FCurTokenListEditCol.Clear;
   if not FIsCppSource then
   begin
-    if Assigned(Parser) then
+    if Assigned(PasParser) then
     begin
       if not FCurrentBlockSearched then
       begin
         EditPos := EditView.CursorPos;
         EditView.ConvertPos(True, EditPos, CharPos);
-        Parser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
+        PasParser.FindCurrentBlock(CharPos.Line, CharPos.CharIndex);
       end;
 
 {$IFDEF DEBUG}
-      if Assigned(Parser.MethodStartToken) and
-        Assigned(Parser.MethodCloseToken) then
+      if Assigned(PasParser.MethodStartToken) and
+        Assigned(PasParser.MethodCloseToken) then
         CnDebugger.LogFmt('CurrentMethod: %s, MethodStartToken: %d, MethodCloseToken: %d',
-          [Parser.CurrentMethod, Parser.MethodStartToken.ItemIndex, Parser.MethodCloseToken.ItemIndex]);
+          [PasParser.CurrentMethod, PasParser.MethodStartToken.ItemIndex, PasParser.MethodCloseToken.ItemIndex]);
 {$ENDIF}
 
-      if Assigned(Parser.MethodStartToken) and
-        Assigned(Parser.MethodCloseToken) then
+      if Assigned(PasParser.MethodStartToken) and
+        Assigned(PasParser.MethodCloseToken) then
       begin
-        FCurMethodStartToken := Parser.MethodStartToken;
-        FCurMethodCloseToken := Parser.MethodCloseToken;
+        FCurMethodStartToken := PasParser.MethodStartToken;
+        FCurMethodCloseToken := PasParser.MethodCloseToken;
       end;
 
       CnOtaGetCurrPosToken(TmpCurTokenStr, TokenCursorIndex, True, [], [], EditView);
@@ -1614,11 +1686,11 @@ begin
       if FCurrentTokenName <> '' then
       begin
         StartIndex := 0;
-        EndIndex := Parser.Count - 1;
+        EndIndex := PasParser.Count - 1;
 
         // 高亮整个单元时，或当前是过程名与类名时，或无当前Method时，高亮整个单元
         if (FHighlight.BlockHighlightRange = brAll)
-          or TokenIsMethodOrClassName(string(FCurrentTokenName), string(Parser.CurrentMethod))
+          or TokenIsMethodOrClassName(string(FCurrentTokenName), string(PasParser.CurrentMethod))
           or ((FCurMethodStartToken = nil) or (FCurMethodCloseToken = nil)) then
         begin
 //          StartIndex := 0;
@@ -1633,7 +1705,7 @@ begin
         // 必须搜索当前所有标识符，避免只高亮光标出于当前过程内的问题
         for I := StartIndex to EndIndex do
         begin
-          AToken := Parser.Tokens[I];
+          AToken := PasParser.Tokens[I];
           if (AToken.TokenID = tkIdentifier) and // 此处判断不支持双字节字符
             CheckTokenMatch(AToken.Token, FCurrentTokenName, CaseSensitive) then
           begin
@@ -1762,27 +1834,28 @@ begin
   FCompDirectiveTokenList.Clear;
   if not FIsCppSource then
   begin
-    if Assigned(Parser) then
+    if Assigned(PasParser) then
     begin
 {$IFDEF DEBUG}
 //    CnDebugger.LogFmt('UpdateCompDirectiveList.Count: %d', [Parser.Count]);
 {$ENDIF}
-      for I := 0 to Parser.Count - 1 do // 编译指令直接针对整个单元
+      for I := 0 to PasParser.Count - 1 do // 编译指令直接针对整个单元
       begin
-        if not CheckIsCompDirectiveToken(Parser.Tokens[I], FIsCppSource) then
+        if not CheckIsCompDirectiveToken(PasParser.Tokens[I], FIsCppSource) then
           Continue;
 
-        CharPos := OTACharPos(Parser.Tokens[I].CharIndex, Parser.Tokens[I].LineNumber + 1);
+{$IFNDEF BDS2009_UP}
+        CharPos := OTACharPos(PasParser.Tokens[I].CharIndex, PasParser.Tokens[I].LineNumber + 1);
         EditView.ConvertPos(False, EditPos, CharPos);
-        // TODO: 以上这句在 D2009 中带汉字时结果会有偏差，暂无办法，只能按如下修饰
-{$IFDEF BDS2009_UP}
-        // if not FHighlight.FUseTabKey then
-        EditPos.Col := Parser.Tokens[I].CharIndex + 1;
+        // 以上这句在 D2009 中带汉字时结果会有偏差，暂无办法，只能按如下修饰
+{$ELSE}
+        EditPos.Line := PasParser.Tokens[I].LineNumber + 1;
+        EditPos.Col := PasParser.Tokens[I].CharIndex + 1;
 {$ENDIF}
-        Parser.Tokens[I].EditCol := EditPos.Col;
-        Parser.Tokens[I].EditLine := EditPos.Line;
+        PasParser.Tokens[I].EditCol := EditPos.Col;
+        PasParser.Tokens[I].EditLine := EditPos.Line;
 
-        FCompDirectiveTokenList.Add(Parser.Tokens[I]);
+        FCompDirectiveTokenList.Add(PasParser.Tokens[I]);
       end;
     end;
   end
@@ -2174,8 +2247,8 @@ constructor TBlockMatchInfo.Create(AControl: TControl);
 begin
   inherited Create;
   FControl := AControl;
-  FParser := TCnPasStructureParser.Create;
-  FParser.UseTabKey := True;
+  FPasParser := TCnPasStructureParser.Create;
+  FPasParser.UseTabKey := True;
   FCppParser := TCnCppStructureParser.Create;
 
   FKeyTokenList := TCnList.Create;
@@ -2218,7 +2291,7 @@ begin
   FKeyTokenList.Free;
   
   FCppParser.Free;
-  FParser.Free;
+  FPasParser.Free;
   inherited;
 end;
 
@@ -2553,12 +2626,15 @@ begin
 end;
 
 function TCnSourceHighlight.EditorGetTextRect(Editor: TEditorObject;
-  APos: TOTAEditPos; const {$IFDEF BDS}LineText, {$ENDIF} AText: AnsiString; var ARect: TRect): Boolean;
+  APos: TOTAEditPos; const {$IFDEF BDS}LineText, {$ENDIF} AText: string; var ARect: TRect): Boolean;
 {$IFDEF BDS}
 var
   I, TotalWidth: Integer;
   S: AnsiString;
   UseTab: Boolean;
+{$IFDEF BDS}
+  UCol: Integer;
+{$ENDIF}
 {$IFDEF UNICODE}
   U: string;
 {$ELSE}
@@ -2574,6 +2650,7 @@ var
       Result := Round(EditCanvas.TextWidth(AChar) / CharSize.cx) * CharSize.cx;
   end;
 {$ENDIF}
+
 begin
   with Editor do
   begin
@@ -2590,15 +2667,37 @@ begin
       begin
         EditCanvas := EditControlWrapper.GetEditControlCanvas(Editor.EditControl);
         TotalWidth := 0;
-        if APos.Col > 1 then
-          S := Copy(LineText, 1, APos.Col - 1)
-        else
-          S := '';
+
+        if _UNICODE_STRING and CodePageOnlySupportsEnglish then
+        begin
+          // 纯英文平台下 D2009 以上转 AnsiString 会丢字符导致计算错误，此处换一种方法
+          UCol := CalcWideStringLengthFromAnsiOffset(PWideChar(LineText), APos.Col);
+          if UCol > 1 then
+          begin
 {$IFDEF UNICODE}
-        U := string(S);
+            U := Copy(LineText, 1, UCol - 1);
 {$ELSE}
-        U := WideString(S);
+            U := WideString(Copy(LineText, 1, UCol - 1));
 {$ENDIF}
+          end
+          else
+            U := '';
+        end
+        else
+        begin
+          if APos.Col > 1 then
+          begin
+            S := Copy(AnsiString(LineText), 1, APos.Col - 1)
+          end
+          else
+            S := '';
+{$IFDEF UNICODE}
+          U := string(S);
+{$ELSE}
+          U := WideString(S);
+{$ENDIF}
+        end;
+
         if U <> '' then
         begin
           // 挨个记录每个字符（双字节）的宽度并累加
@@ -2617,7 +2716,7 @@ begin
           end;
         end;
         ARect := Bounds(GutterWidth + TotalWidth,
-          (APos.Line - EditView.TopRow) * CharSize.cy, EditCanvas.TextWidth(string(AText)),
+          (APos.Line - EditView.TopRow) * CharSize.cy, EditCanvas.TextWidth(AText),
           CharSize.cy);
       end
       else
@@ -2728,23 +2827,28 @@ var
   CharPos: TOTACharPos;
   BracketCount: Integer;
   BracketChars: PBracketArray;
+  TmpPos: TOTAEditPos;
+  TmpULine: string;
 
   function InCommentOrString(APos: TOTAEditPos): Boolean;
   var
     Element, LineFlag: Integer;
   begin
     // IOTAEditView.GetAttributeAtPos 会导致选择区域失效、Undo 区混乱，故此处
-    // 直接使用底层调用
+    // 直接使用底层调用。注意，Unicode 环境下这个 APos 的 Col 必须是 UTF8 的。
     EditControlWrapper.GetAttributeAtPos(EditControl, APos, False, Element, LineFlag);
     Result := (Element = atComment) or (Element = atString) or
       (Element = atCharacter);
   end;
 
-  function _FindMatchTokenDown(const FindToken, MatchToken: AnsiString;
-    var ALine: AnsiString): TOTAEditPos;
+  function ForwardFindMatchToken(const FindToken, MatchToken: AnsiString;
+    out ALine: AnsiString): TOTAEditPos;
   var
-    i, j, l, Layer: Integer;
+    I, J, L, Layer: Integer;
     TopLine, BottomLine: Integer;
+  {$IFDEF UNICODE}
+    ULine: string;
+  {$ENDIF}
     LineText: AnsiString;
   begin
     Result.Col := 0;
@@ -2755,33 +2859,51 @@ var
     if TopLine <= BottomLine then
     begin
       Layer := 1;
-      for i := TopLine to BottomLine do
+      for I := TopLine to BottomLine do
       begin
       {$IFDEF BDS}
-        if EditControlWrapper.GetLineIsElided(EditControl, i) then
+        if EditControlWrapper.GetLineIsElided(EditControl, I) then
           Continue;
       {$ENDIF}
-        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, i));
-      {$IFDEF UNICODE}
-        LineText := CnAnsiToUtf8(LineText);
-      {$ENDIF}
-        if i = TopLine then
-          l := CharPos.CharIndex + 1
-        else
-          l := 0;
-        for j := l to Length(LineText) - 1 do
+
+{$IFDEF UNICODE}
+        // Unicode 环境下必须把返回的 UnicodeString 内容转成 UTF8，因为 InCommentOrString 所使用的底层调用要求必须 UTF8
+        ULine := EditControlWrapper.GetTextAtLine(EditControl, I);
+        LineText := Utf8Encode(ULine); // UTF16 直接转换成 Ansi 的 Utf8，中间不经过 AnsiString
+{$ELSE}
+        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, I));
+{$ENDIF}
+
+        if I = TopLine then
         begin
-          if (LineText[j + 1] = FindToken) and
-            not InCommentOrString(OTAEditPos(j + 1, i)) then
-            Inc(Layer)
-          else if (LineText[j + 1] = MatchToken) and
-            not InCommentOrString(OTAEditPos(j + 1, i)) then
+          L := CharPos.CharIndex + 1;  // 从光标后一个字符开始
+{$IFDEF UNICODE}
+          // L 是 0 开始，L + 1 是 CursorPos.Col，Unicode 环境下是 Ansi 的，需要转成 UTF8 以符合 LineText 的计算
+          L := ConvertAnsiPositionToUtf8OnUnicodeText(ULine, L + 1) - 1;
+{$ENDIF}
+        end
+        else
+          L := 0;
+
+        for J := L to Length(LineText) - 1 do
+        begin
+          if (LineText[J + 1] = FindToken) and
+            not InCommentOrString(OTAEditPos(J + 1, I)) then
+          begin
+            Inc(Layer);
+          end
+          else if (LineText[J + 1] = MatchToken) and
+            not InCommentOrString(OTAEditPos(J + 1, I)) then
           begin
             Dec(Layer);
             if Layer = 0 then
             begin
               ALine := LineText;
-              Result := OTAEditPos(j + 1, i);
+              Result := OTAEditPos(J + 1, I);
+{$IFDEF UNICODE}
+              // LineText 是 Utf8 的，转回 Ansi，Result 是 Utf8 的，转回 Ansi
+              Result.Col := ConvertUtf8PositionToAnsi(LineText, Result.Col);
+{$ENDIF}
               Exit;
             end;
           end;
@@ -2790,11 +2912,14 @@ var
     end;
   end;
 
-  function _FindMatchTokenUp(const FindToken, MatchToken: AnsiString;
-    var ALine: AnsiString): TOTAEditPos;
+  function BackFindMatchToken(const FindToken, MatchToken: AnsiString;
+    out ALine: AnsiString): TOTAEditPos;
   var
-    i, j, l, Layer: Integer;
+    I, J, L, Layer: Integer;
     TopLine, BottomLine: Integer;
+  {$IFDEF UNICODE}
+    ULine: string;
+  {$ENDIF}
     LineText: AnsiString;
   begin
     Result.Col := 0;
@@ -2805,33 +2930,51 @@ var
     if TopLine <= BottomLine then
     begin
       Layer := 1;
-      for i := BottomLine downto TopLine do
+      for I := BottomLine downto TopLine do
       begin
       {$IFDEF BDS}
-        if EditControlWrapper.GetLineIsElided(EditControl, i) then
+        if EditControlWrapper.GetLineIsElided(EditControl, I) then
           Continue;
       {$ENDIF}
-        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, i));
-      {$IFDEF UNICODE}
-        LineText := CnAnsiToUtf8(LineText);
-      {$ENDIF}
-        if i = BottomLine then
-          l := CharPos.CharIndex - 1
-        else
-          l := Length(LineText) - 1;
-        for j := l downto 0 do
+
+{$IFDEF UNICODE}
+        // Unicode 环境下必须把返回的 UnicodeString 内容转成 UTF8，因为 InCommentOrString 所使用的底层调用要求必须 UTF8
+        ULine := EditControlWrapper.GetTextAtLine(EditControl, I);
+        LineText := Utf8Encode(ULine); // UTF16 直接转换成 Ansi 的 Utf8，中间不经过 AnsiString
+{$ELSE}
+        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, I));
+{$ENDIF}
+
+        if I = BottomLine then
         begin
-          if (LineText[j + 1] = FindToken) and
-            not InCommentOrString(OTAEditPos(j + 1, i)) then
-            Inc(Layer)
-          else if (LineText[j + 1] = MatchToken) and
-            not InCommentOrString(OTAEditPos(j + 1, i)) then
+          L := CharPos.CharIndex - 1; // 从光标前一个字符开始
+{$IFDEF UNICODE}
+          // L 是 0 开始，L + 1 是 CursorPos.Col，Unicode 环境下是 Ansi 的，需要转成 UTF8 以符合 LineText 的计算
+          L := ConvertAnsiPositionToUtf8OnUnicodeText(ULine, L + 1) - 1;
+{$ENDIF}
+        end
+        else
+          L := Length(LineText) - 1;
+
+        for J := L downto 0 do
+        begin
+          if (LineText[J + 1] = FindToken) and
+            not InCommentOrString(OTAEditPos(J + 1, I)) then
+          begin
+            Inc(Layer);
+          end
+          else if (LineText[J + 1] = MatchToken) and
+            not InCommentOrString(OTAEditPos(J + 1, I)) then
           begin
             Dec(Layer);
             if Layer = 0 then
             begin
               ALine := LineText;
-              Result := OTAEditPos(j + 1, i);
+              Result := OTAEditPos(J + 1, I);
+{$IFDEF UNICODE}
+              // LineText 是 Utf8 的，转回 Ansi，Result 是 Utf8 的，转回 Ansi
+              Result.Col := ConvertUtf8PositionToAnsi(LineText, Result.Col);
+{$ENDIF}
               Exit;
             end;
           end;
@@ -2840,13 +2983,16 @@ var
     end;
   end;
 
-  function _FindMatchTokenMiddle: Boolean;
+  function FindMatchTokenFromMiddle: Boolean;
   var
-    i, j, k, l: Integer;
-    ml, mr: Integer;
+    I, J, K, L: Integer;
+    ML, MR: Integer;
     TopLine, BottomLine, Cnt: Integer;
     LineText: AnsiString;
     Layers: array of Integer;
+  {$IFDEF UNICODE}
+    ULine: string;
+  {$ENDIF}
   begin
     Result := False;
     SetLength(Layers, BracketCount);
@@ -2856,50 +3002,69 @@ var
     BottomLine := Min(EditBuffer.GetLinesInBuffer, Max(CharPos.Line, EditView.BottomRow));
     if TopLine <= BottomLine then
     begin
-      ml := 0;
-      mr := BracketCount - 1;
-      for i := 0 to BracketCount - 1 do
-        Layers[i] := 0;
+      ML := 0;
+      MR := BracketCount - 1;
+      for I := 0 to BracketCount - 1 do
+        Layers[I] := 0;
 
       // 向前查找左括号
       Cnt := 0;
-      for i := CharPos.Line downto TopLine do
+      for I := CharPos.Line downto TopLine do
       begin
       {$IFDEF BDS}
-        if EditControlWrapper.GetLineIsElided(EditControl, i) then
+        if EditControlWrapper.GetLineIsElided(EditControl, I) then
           Continue;
       {$ENDIF}
-        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, i));
-      {$IFDEF UNICODE}
-        LineText := CnAnsiToUtf8(LineText);
-      {$ENDIF}
-        if i = CharPos.Line then
-          l := Min(CharPos.CharIndex, Length(LineText)) - 1
-        else
-          l := Length(LineText) - 1;
-        for j := l downto 0 do
+
+{$IFDEF UNICODE}
+        // Unicode 环境下必须把返回的 UnicodeString 内容转成 UTF8，因为 InCommentOrString 所使用的底层调用要求必须 UTF8
+        ULine := EditControlWrapper.GetTextAtLine(EditControl, I);
+        LineText := Utf8Encode(ULine); // UTF16 直接转换成 Ansi 的 Utf8，中间不经过 AnsiString
+{$ELSE}
+        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, I));
+{$ENDIF}
+
+        if I = CharPos.Line then
         begin
-          for k := 0 to BracketCount - 1 do
-            if (LineText[j + 1] = BracketChars^[k][0]) and
-              not InCommentOrString(OTAEditPos(j + 1, i)) then
+          L := Min(CharPos.CharIndex, Length(LineText)) - 1;  // 从光标处或行尾（看哪个更小）往前找
+{$IFDEF UNICODE}
+          // L 是 0 开始，L + 1 是 CursorPos.Col，Unicode 环境下是 Ansi 的，需要转成 UTF8 以符合 LineText 的计算
+          L := ConvertAnsiPositionToUtf8OnUnicodeText(ULine, L + 1) - 1;
+{$ENDIF}
+        end
+        else
+          L := Length(LineText) - 1;
+
+        for J := L downto 0 do
+        begin
+          for K := 0 to BracketCount - 1 do
+          begin
+            if (LineText[J + 1] = BracketChars^[K][0]) and
+              not InCommentOrString(OTAEditPos(J + 1, I)) then
             begin
-              if Layers[k] = 0 then
+              if Layers[K] = 0 then
               begin
-                AInfo.TokenStr := BracketChars^[k][0];
+                AInfo.TokenStr := BracketChars^[K][0];
                 AInfo.TokenLine := LineText;
-                AInfo.TokenPos := OTAEditPos(j + 1, i);
-                ml := k;
-                mr := k;
+                AInfo.TokenPos := OTAEditPos(J + 1, I);
+{$IFDEF UNICODE}
+                // LineText 是 Utf8 的，转回 Ansi，Result 是 Utf8 的，转回 Ansi
+                AInfo.TokenLine := CnUtf8ToAnsi(AInfo.TokenLine);
+                AInfo.TokenPos := OTAEditPos(ConvertUtf8PositionToAnsi(LineText, AInfo.TokenPos.Col), I);
+{$ENDIF}
+                ML := K;
+                MR := K;
                 Break;
               end
               else
-                Dec(Layers[k]);
+                Dec(Layers[K]);
             end
-            else if (LineText[j + 1] = BracketChars^[k][1]) and
-              not InCommentOrString(OTAEditPos(j + 1, i)) then
+            else if (LineText[J + 1] = BracketChars^[K][1]) and
+              not InCommentOrString(OTAEditPos(J + 1, I)) then
             begin
-              Inc(Layers[k]);
+              Inc(Layers[K]);
             end;
+          end;
           if AInfo.TokenStr <> '' then
             Break;
         end;
@@ -2911,46 +3076,65 @@ var
           Break;
       end;
 
-      for i := 0 to BracketCount - 1 do
-        Layers[i] := 0;
+      for I := 0 to BracketCount - 1 do
+        Layers[I] := 0;
 
       // 向后查找右括号
       Cnt := 0;
-      for i := CharPos.Line to BottomLine do
+      for I := CharPos.Line to BottomLine do
       begin
       {$IFDEF BDS}
-        if EditControlWrapper.GetLineIsElided(EditControl, i) then
+        if EditControlWrapper.GetLineIsElided(EditControl, I) then
           Continue;
       {$ENDIF}
-        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, i));
-      {$IFDEF UNICODE}
-        LineText := CnAnsiToUtf8(LineText);
-      {$ENDIF}
-        if i = CharPos.Line then
-          l := CharPos.CharIndex
-        else
-          l := 0;
-        for j := l to Length(LineText) - 1 do
+
+{$IFDEF UNICODE}
+        // Unicode 环境下必须把返回的 UnicodeString 内容转成 UTF8，因为 InCommentOrString 所使用的底层调用要求必须 UTF8
+        ULine := EditControlWrapper.GetTextAtLine(EditControl, I);
+        LineText := Utf8Encode(ULine); // UTF16 直接转换成 Ansi 的 Utf8，中间不经过 AnsiString
+{$ELSE}
+        LineText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, I));
+{$ENDIF}
+
+        if I = CharPos.Line then
         begin
-          for k := ml to mr do
-            if (LineText[j + 1] = BracketChars^[k][1]) and
-              not InCommentOrString(OTAEditPos(j + 1, i)) then
+          L := CharPos.CharIndex;  // 从光标处往后找
+{$IFDEF UNICODE}
+          // L 是 0 开始，L + 1 是 CursorPos.Col，Unicode 环境下是 Ansi 的，需要转成 UTF8 以符合 LineText 的计算
+          L := ConvertAnsiPositionToUtf8OnUnicodeText(ULine, L + 1) - 1;
+{$ENDIF}
+        end
+        else
+          L := 0;
+
+        for J := L to Length(LineText) - 1 do
+        begin
+          for K := ML to MR do
+          begin
+            if (LineText[J + 1] = BracketChars^[K][1]) and
+              not InCommentOrString(OTAEditPos(J + 1, I)) then
             begin
-              if Layers[k] = 0 then
+              if Layers[K] = 0 then
               begin
-                AInfo.TokenMatchStr := BracketChars^[k][1];
+                AInfo.TokenMatchStr := BracketChars^[K][1];
                 AInfo.TokenMatchLine := LineText;
-                AInfo.TokenMatchPos := OTAEditPos(j + 1, i);
+                AInfo.TokenMatchPos := OTAEditPos(J + 1, I);
+{$IFDEF UNICODE}
+                // LineText 是 Utf8 的，转回 Ansi，Result 是 Utf8 的，转回 Ansi
+                AInfo.TokenMatchLine := CnUtf8ToAnsi(AInfo.TokenMatchLine);
+                AInfo.TokenMatchPos := OTAEditPos(ConvertUtf8PositionToAnsi(LineText, AInfo.TokenMatchPos.Col), I);
+{$ENDIF}
                 Break;
               end
               else
-                Dec(Layers[k]);
+                Dec(Layers[K]);
             end
-            else if (LineText[j + 1] = BracketChars^[k][0]) and
-              not InCommentOrString(OTAEditPos(j + 1, i)) then
+            else if (LineText[J + 1] = BracketChars^[K][0]) and
+              not InCommentOrString(OTAEditPos(J + 1, I)) then
             begin
-              Inc(Layers[k]);
+              Inc(Layers[K]);
             end;
+          end;
           if AInfo.TokenMatchStr <> '' then
             Break;
         end;
@@ -2992,18 +3176,22 @@ begin
     else
       Exit;
 
-    if not CnOtaIsEditPosOutOfLine(EditView.CursorPos, EditView) and
-      not InCommentOrString(EditView.CursorPos) then
-    begin
-      CharPos.CharIndex := EditView.CursorPos.Col - 1;
-      CharPos.Line := EditView.CursorPos.Line;
-      LText := AnsiString(EditControlWrapper.GetTextAtLine(EditControl, CharPos.Line));
+    CharPos.CharIndex := EditView.CursorPos.Col - 1;
+    CharPos.Line := EditView.CursorPos.Line;
+    TmpULine := EditControlWrapper.GetTextAtLine(EditControl, CharPos.Line);
+    LText := AnsiString(TmpULine);
+    // BDS 下 CursorPos 是 utf8 的位置，LText 在 BDS 下是 UTF8，一致。
+    // 在 D2009 下是 UnicodeString，CursorPos 是 Ansi 位置，因此需要转成 Ansi。
 
-      // 此处 CursorPos 是 utf8 的位置，LText 在 BDS 下是 UTF8，但在 D2009 下是
-      // UnicodeString，因此下面的取下标等会出问题，所以全转成 UTF8 来处理。
-      {$IFDEF UNICODE}
-      LText := CnAnsiToUtf8(LText);
-      {$ENDIF}
+    TmpPos := EditView.CursorPos;
+{$IFDEF UNICODE}
+    // 把 Ansi 的 TmpPos 的 Col 转成 UTF8 的
+    TmpPos.Col := ConvertAnsiPositionToUtf8OnUnicodeText(TmpULine, TmpPos.Col);
+{$ENDIF}
+
+    if not CnOtaIsEditPosOutOfLine(EditView.CursorPos, EditView) and
+      not InCommentOrString(TmpPos) then
+    begin
       if LText <> '' then
       begin
         if CharPos.CharIndex > 0 then
@@ -3018,8 +3206,12 @@ begin
           PL := OTAEditPos(0, 0);
         end;
         CR := LText[CharPos.CharIndex + 1];
+{$IFDEF DEBUG}
+//      CnDebugger.LogFmt('GetBracketMatch Chars Left and Right to Cursor: ''%s'', ''%s''', [CL, CR]);
+{$ENDIF}
         PR := EditView.CursorPos;
         for i := 0 to BracketCount - 1 do
+        begin
           if CL = BracketChars^[i][0] then
           begin
             AInfo.TokenStr := CL;
@@ -3027,7 +3219,7 @@ begin
             AInfo.TokenPos := PL;
             CharPos := OTACharPos(PL.Col - 1, PL.Line);
             AInfo.TokenMatchStr := BracketChars^[i][1];
-            AInfo.TokenMatchPos := _FindMatchTokenDown(AInfo.TokenStr,
+            AInfo.TokenMatchPos := ForwardFindMatchToken(AInfo.TokenStr,
               AInfo.TokenMatchStr, AInfo.FTokenMatchLine);
             Result := True;
             Break;
@@ -3039,28 +3231,37 @@ begin
             AInfo.TokenPos := PR;
             CharPos := OTACharPos(PR.Col - 1, PR.Line);
             AInfo.TokenMatchStr := BracketChars^[i][0];
-            AInfo.TokenMatchPos := _FindMatchTokenUp(AInfo.TokenStr,
+            AInfo.TokenMatchPos := BackFindMatchToken(AInfo.TokenStr,
               AInfo.TokenMatchStr, AInfo.FTokenMatchLine);
             Result := True;
             Break;
           end;
+        end;
       end;
     end;
 
     // 查找在括号中间的情形
     if not Result and FBracketMiddle then
-      Result := _FindMatchTokenMiddle;
+      Result := FindMatchTokenFromMiddle;
 
-{$IFDEF BDS}
+{$IFDEF IDE_STRING_ANSI_UTF8}
     // BDS 下 LineText 是 Utf8，EditView.CursorPos.Col 也是 Utf8 字符串中的位置
-    // 此处转换为 AnsiString 位置。D2009 中 LineText 虽不是 Utf8，但已经在上面转
-    // 成了 UTF8 来参与计算，因此这儿仍然需要转回。
+    // 此处转换为 AnsiString 位置。D2009 中 LineText 不是 Utf8，因此这儿不需要转回。
     if Result then
     begin
       AInfo.FTokenPos.Col := Length(CnUtf8ToAnsi(AnsiString(Copy(AInfo.TokenLine, 1,
         AInfo.TokenPos.Col))));
       AInfo.FTokenMatchPos.Col := Length(CnUtf8ToAnsi(AnsiString(Copy(AInfo.TokenMatchLine, 1,
         AInfo.TokenMatchPos.Col))));
+    end;
+{$ENDIF}
+
+{$IFDEF DEBUG}
+    if Result then
+    begin
+      CnDebugger.LogFmt('TCnSourceHighlight.GetBracketMatch Matched! %s at %d:%d and %s at %d:%d.',
+        [AInfo.TokenStr, AInfo.TokenPos.Line, AInfo.TokenPos.Col,
+        AInfo.TokenMatchStr, AInfo.TokenMatchPos.Line, AInfo.TokenMatchPos.Col]);
     end;
 {$ENDIF}
   finally
@@ -3134,12 +3335,12 @@ begin
       if Info.IsMatch then
       begin
         if (LogicLineNum = Info.TokenPos.Line) and EditorGetTextRect(Editor,
-          OTAEditPos(Info.TokenPos.Col, LineNum), {$IFDEF BDS}FLineText, {$ENDIF} Info.TokenStr, R) then
+          OTAEditPos(Info.TokenPos.Col, LineNum), {$IFDEF BDS}FUniLineText, {$ENDIF} string(Info.TokenStr), R) then
           EditorPaintText(EditControl, R, Info.TokenStr, BracketColor,
             BracketColorBk, BracketColorBd, BracketBold, False, False);
 
         if (LogicLineNum = Info.TokenMatchPos.Line) and EditorGetTextRect(Editor,
-          OTAEditPos(Info.TokenMatchPos.Col, LineNum), {$IFDEF BDS}FLineText, {$ENDIF} Info.TokenMatchStr, R) then
+          OTAEditPos(Info.TokenMatchPos.Col, LineNum), {$IFDEF BDS}FUniLineText, {$ENDIF} string(Info.TokenMatchStr), R) then
           EditorPaintText(EditControl, R, Info.TokenMatchStr, BracketColor,
             BracketColorBk, BracketColorBd, BracketBold, False, False);
       end;
@@ -3550,14 +3751,22 @@ var
   begin
     // 因为关键字的 Token 中不会出现双字节字符，因此只需计算一次 EditPosColBase 即可
     Result := Token.EditCol;
-    {$IFDEF BDS}
-      // GetAttributeAtPos 需要的是 UTF8 的Pos，因此进行 Col 的 UTF8 转换
-      // 但实际上并非如此转换的简单，因为有部分双字节字符如 Accent Char
-      // 等自身只占一个字符的位置，并非如汉字字符一样占两个字符位置，因此
-      // 代码中有此等字符时会出现错位的情况，BDS 都有这个问题。
-      if FLineText <> '' then
-        Result := Length(CnAnsiToUtf8(Copy(FLineText, 1, Token.EditCol)));
-    {$ENDIF}
+{$IFDEF BDS}
+    // GetAttributeAtPos 需要的是 UTF8 的Pos，因此进行 Col 的 UTF8 转换
+    // 但实际上并非如此转换的简单，因为有部分双字节字符如 Accent Char
+    // 等自身只占一个字符的位置，并非如汉字字符一样占两个字符位置，因此
+    // 代码中有此等字符时会出现错位的情况，BDS 都有这个问题。
+    if _UNICODE_STRING and CodePageOnlySupportsEnglish then
+    begin
+      if FUniLineText <> '' then
+        Result := ConvertAnsiPositionToUtf8OnUnicodeText(FUniLineText, Token.EditCol);
+    end
+    else
+    begin
+      if FAnsiLineText <> '' then
+        Result := Length(CnAnsiToUtf8(Copy(FAnsiLineText, 1, Token.EditCol)));
+    end;
+{$ENDIF}
   end;
 
 begin
@@ -3595,7 +3804,7 @@ begin
 
         // 先画上分隔线再说
         EditPos := OTAEditPos(Editor.EditView.LeftColumn, LineNum);
-        if EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FLineText, {$ENDIF} ' ', R) then
+        if EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FUniLineText, {$ENDIF} ' ', R) then
         begin
           EditCanvas.Pen.Color := FSeparateLineColor;
           EditCanvas.Pen.Width := FSeparateLineWidth;
@@ -3699,7 +3908,7 @@ begin
               EditPos := OTAEditPos(Token.EditCol + J, LineNum);
               if not RectGot then
               begin
-                if EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FLineText, {$ENDIF} Token.Token[J], R) then
+                if EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FUniLineText, {$ENDIF} string(Token.Token[J]), R) then
                   RectGot := True
                 else
                   Continue;
@@ -3758,7 +3967,7 @@ begin
             TokenLen := Length(Token.Token);
 
             EditPos := OTAEditPos(Token.EditCol, LineNum);
-            if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FLineText, {$ENDIF} Token.Token, R) then
+            if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FUniLineText, {$ENDIF} string(Token.Token), R) then
               Continue;
 
             EditPos.Col := Token.EditCol;
@@ -3766,8 +3975,16 @@ begin
 
             // Token 前也就是初始 EditCol 需要 UTF8 转换
 {$IFDEF BDS}
-            if FLineText <> '' then
-              EditPos.Col := Length(CnAnsiToUtf8(Copy(FLineText, 1, Token.EditCol)));
+            if _UNICODE_STRING and CodePageOnlySupportsEnglish then
+            begin
+              if FUniLineText <> '' then
+                EditPos.Col := ConvertAnsiPositionToUtf8OnUnicodeText(FUniLineText, Token.EditCol);
+            end
+            else
+            begin
+              if FAnsiLineText <> '' then
+                EditPos.Col := Length(CnAnsiToUtf8(Copy(FAnsiLineText, 1, Token.EditCol)));
+            end;
 {$ENDIF}
             CanDrawToken := True;
             for J := 0 to TokenLen - 1 do
@@ -3848,7 +4065,7 @@ begin
             TokenLen := Length(Token.Token);
 
             EditPos := OTAEditPos(Token.EditCol, LineNum);
-            if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FLineText, {$ENDIF} Token.Token, R) then
+            if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FUniLineText, {$ENDIF} string(Token.Token), R) then
               Continue;
 
             EditPos.Col := Token.EditCol;
@@ -3856,8 +4073,16 @@ begin
 
             // Token 前也就是初始 EditCol 需要 UTF8 转换
 {$IFDEF BDS}
-            if FLineText <> '' then
-              EditPos.Col := Length(CnAnsiToUtf8(Copy(FLineText, 1, Token.EditCol)));
+            if _UNICODE_STRING and CodePageOnlySupportsEnglish then
+            begin
+              if FUniLineText <> '' then
+                EditPos.Col := ConvertAnsiPositionToUtf8OnUnicodeText(FUniLineText, Token.EditCol);
+            end
+            else
+            begin
+              if FAnsiLineText <> '' then
+                EditPos.Col := Length(CnAnsiToUtf8(Copy(FAnsiLineText, 1, Token.EditCol)));
+            end;
 {$ENDIF}
             CanDrawToken := True;
             for J := 0 to TokenLen - 1 do
@@ -3950,7 +4175,7 @@ begin
               (CompDirectivePair.IndexOfMiddleToken(Token) >= 0) then
             begin
               EditPos := OTAEditPos(Token.EditCol, LineNum);
-              if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FLineText, {$ENDIF} Token.Token, R) then
+              if not EditorGetTextRect(Editor, EditPos, {$IFDEF BDS}FUniLineText, {$ENDIF} string(Token.Token), R) then
                 Continue;
 
               EditPos.Col := Token.EditCol;
@@ -3958,8 +4183,8 @@ begin
 
               // Token 前也就是初始 EditCol 需要 UTF8 转换
 {$IFDEF BDS}
-              if FLineText <> '' then
-                EditPos.Col := Length(CnAnsiToUtf8(Copy(FLineText, 1, Token.EditCol)));
+              if FAnsiLineText <> '' then
+                EditPos.Col := Length(CnAnsiToUtf8(Copy(FAnsiLineText, 1, Token.EditCol)));
 {$ENDIF}
               CanDrawToken := True;
               for J := 0 to TokenLen - 1 do
@@ -4431,12 +4656,14 @@ begin
 {$IFDEF BDS}
     // 预先获得当前行，供重画时重新进行 UTF8 位置计算
   {$IFDEF UNICODE}
+    FUniLineText := EditControlWrapper.GetTextAtLine(Editor.EditControl,
+      LogicLineNum);
     // Delphi 2009 下不用进行额外的 UTF8 转换
-    FLineText := AnsiString(EditControlWrapper.GetTextAtLine(Editor.EditControl,
-      LogicLineNum));
+    FAnsiLineText := AnsiString(FUniLineText);
   {$ELSE}
-    FLineText := Utf8ToAnsi(EditControlWrapper.GetTextAtLine(Editor.EditControl,
+    FAnsiLineText := Utf8ToAnsi(EditControlWrapper.GetTextAtLine(Editor.EditControl,
       LogicLineNum));
+    FUniLineText := FAnsiLineText;
   {$ENDIF}
 {$ELSE}
     CanDrawCurrentLine := False;
@@ -5193,21 +5420,26 @@ var
         Exit;
       end;
   end;
+
 begin
   FCurrentPair := nil;
   FCurrentToken := nil;
-  Text := AnsiString(GetStrProp(FControl, 'LineText'));
+
+  if _UNICODE_STRING and CodePageOnlySupportsEnglish then // 纯英文 Unicode 环境下不能直接转 Ansi
+    Text := ConvertUtf16ToAlterAnsi(PWideChar(GetStrProp(FControl, 'LineText')), 'C')
+  else
+    Text := AnsiString(GetStrProp(FControl, 'LineText'));
+
   Col := View.CursorPos.Col;
 {$IFDEF BDS}
   // TODO: 用 TextWidth 获得光标位置精确对应的源码字符位置，但实现较难。
   // 当存在占据单字符位置的双字节字符时，以下算法会有偏差。
 
-  // 获得的是 UTF8 字符串与 Pos，需要转换成 Ansi 的，但 D2009 无需转换
+  // D2007 与以下版本获得的是 UTF8 字符串与 Pos，需要转换成 Ansi 的，
+  // 但 D2009 的 LineText 属性是 UnicodeString，上面已经 Ansi 化了，无需再次转换
   if Text <> '' then
   begin
-    {$IFDEF UNICODE}
-    //Col := Length(CnUtf8ToAnsi(Copy(CnAnsiToUtf8(Text), 1, Col)));
-    {$ELSE}
+    {$IFNDEF UNICODE}
     Col := Length(CnUtf8ToAnsi(Copy(Text, 1, Col)));
     Text := CnUtf8ToAnsi(Text);
     {$ENDIF}
@@ -5371,10 +5603,16 @@ var
         Exit;
       end;
   end;
+
 begin
   FCurrentPair := nil;
   FCurrentToken := nil;
-  Text := AnsiString(GetStrProp(FControl, 'LineText'));
+
+  if _UNICODE_STRING and CodePageOnlySupportsEnglish then // 纯英文 Unicode 环境下不能直接转 Ansi
+    Text := ConvertUtf16ToAlterAnsi(PWideChar(GetStrProp(FControl, 'LineText')), 'C')
+  else
+    Text := AnsiString(GetStrProp(FControl, 'LineText'));
+
   Col := View.CursorPos.Col;
 {$IFDEF BDS}
   // TODO: 用 TextWidth 获得光标位置精确对应的源码字符位置，但实现较难。

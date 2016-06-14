@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -43,7 +43,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   CheckLst, StdCtrls, ComCtrls, ExtCtrls, Menus, CnConsts, CnCommon, IniFiles,
-  CnWizMultiLang, CnSpin, CnWizConsts, CnInputHelper, CnInputSymbolList,
+  ToolsAPI, CnWizMultiLang, CnSpin, CnWizConsts, CnInputHelper, CnInputSymbolList,
   CnInputIdeSymbolList, CnInputHelperEditFrm, CnWizMacroText, CnWizUtils;
 
 type
@@ -127,6 +127,7 @@ type
     chkUseKibitzCompileThread: TCheckBox;
     edtAutoSymbols: TEdit;
     chkKeySeq: TCheckBox;
+    btnDisableCompletion: TButton;
     procedure FormShow(Sender: TObject);
     procedure PaintBoxPaint(Sender: TObject);
     procedure btnFontClick(Sender: TObject);
@@ -157,6 +158,8 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure chkSpcCompleteClick(Sender: TObject);
+    procedure chkDispOnIDECompDisabledClick(Sender: TObject);
+    procedure btnDisableCompletionClick(Sender: TObject);
   private
     InputHelper: TCnInputHelper;
     NewSymbol: string;
@@ -478,6 +481,7 @@ begin
   chkDispOnIDECompDisabled.Enabled := chkAutoPopup.Checked;
   chkKeySeq.Enabled := chkAutoPopup.Checked;
   edtAutoSymbols.Enabled := chkAutoPopup.Checked and chkKeySeq.Checked;
+  btnDisableCompletion.Enabled := chkDispOnIDECompDisabled.Checked;
 end;
 
 procedure TCnInputHelperForm.UpdateListItem(Item: TListItem);
@@ -817,6 +821,26 @@ end;
 procedure TCnInputHelperForm.chkSpcCompleteClick(Sender: TObject);
 begin
   chkIgnoreSpace.Enabled := chkSpcComplete.Checked;
+end;
+
+procedure TCnInputHelperForm.chkDispOnIDECompDisabledClick(
+  Sender: TObject);
+begin
+  btnDisableCompletion.Enabled := chkDispOnIDECompDisabled.Checked;
+end;
+
+procedure TCnInputHelperForm.btnDisableCompletionClick(Sender: TObject);
+const
+  SCnCodeCompletionKey = 'CodeCompletion';
+var
+  Options: IOTAEnvironmentOptions;
+begin
+  Options := CnOtaGetEnvironmentOptions;
+  if Options = nil then
+    Exit;
+
+  Options.SetOptionValue(SCnCodeCompletionKey, 0);
+  InfoDlg(SCnInputHelperDisableCodeCompletionSucc);
 end;
 
 {$ENDIF CNWIZARDS_CNINPUTHELPER}

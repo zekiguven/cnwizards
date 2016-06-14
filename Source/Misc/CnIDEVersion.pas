@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -313,6 +313,17 @@ begin
   Result := CompareVersionNumber(ReadFileVersion, CoreIdeLatest) >= 0;
 end;
 
+function IsDelphi101BIdeVersionLatest: Boolean;
+const           //24.0.22858.6822
+  CoreIdeLatest: TVersionNumber =
+    (Major: 24; Minor: 0; Release: 22858; Build: 6822);
+var
+  ReadFileVersion: TVersionNumber;
+begin
+  ReadFileVersion := GetFileVersionNumber(GetIdeRootDirectory + 'Bin\coreide240.bpl');
+  Result := CompareVersionNumber(ReadFileVersion, CoreIdeLatest) >= 0;
+end;
+
 function IsIdeVersionLatest: Boolean;
 begin
   if CnIdeVersionDetected then
@@ -401,6 +412,10 @@ begin
 
 {$IFDEF DELPHI10_SEATTLE}
   CnIdeVersionIsLatest := IsDelphi10SIdeVersionLatest;
+{$ENDIF}
+
+{$IFDEF DELPHI101_BERLIN}
+  CnIdeVersionIsLatest := IsDelphi101BIdeVersionLatest;
 {$ENDIF}
 
   Result := CnIdeVersionIsLatest;

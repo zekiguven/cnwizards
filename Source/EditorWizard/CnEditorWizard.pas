@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -43,7 +43,8 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs, Menus,
   StdCtrls, ComCtrls, IniFiles, ToolsAPI, Registry, CnWizClasses, CnConsts, CnIni,
-  CnWizConsts, CnWizMenuAction, ExtCtrls, CnWizMultiLang, CnWizManager;
+  CnWizConsts, CnWizMenuAction, ExtCtrls, CnWizMultiLang, CnWizManager, CnHashMap,
+  CnWizIni;
 
 type
 
@@ -95,6 +96,7 @@ type
     FActive: Boolean;
     FOwner: TCnEditorWizard;
     FAction: TCnWizMenuAction;
+    FDefaultsMap: TCnStrToVariantHashMap;
   protected
     function GetIDStr: string;
     procedure SetActive(Value: Boolean); virtual;
@@ -265,14 +267,17 @@ end;
 
 function TCnBaseEditorTool.CreateIniFile: TCustomIniFile;
 begin
-  Result := TRegistryIniFile.Create(MakePath(WizOptions.RegPath) + Owner.GetIDStr +
-    '\' + GetIDStr, KEY_ALL_ACCESS);
+  if FDefaultsMap = nil then
+    FDefaultsMap := TCnStrToVariantHashMap.Create;
+
+  Result := TCnWizIniFile.Create(MakePath(WizOptions.RegPath) + Owner.GetIDStr +
+    '\' + GetIDStr, KEY_ALL_ACCESS, FDefaultsMap);
 end;
 
 destructor TCnBaseEditorTool.Destroy;
 begin
+  FDefaultsMap.Free;
   inherited;
-
 end;
 
 procedure TCnBaseEditorTool.Loaded;

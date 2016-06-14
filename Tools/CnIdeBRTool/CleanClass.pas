@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -97,7 +97,7 @@ const
      'RAD Studio 2007', 'RAD Studio 2009', 'RAD Studio 2010', 'RAD Studio XE',
      'RAD Studio XE2', 'RAD Studio XE3', 'RAD Studio XE4', 'RAD Studio XE5',
      'RAD Studio XE6', 'RAD Studio XE7', 'RAD Studio XE8', 'RAD Studio 10 Seattle',
-     'C++Builder 5', 'C++Builder 6');
+     'RAD Studio 10.1 Berlin', 'C++Builder 5', 'C++Builder 6');
 
 procedure CreateIDEHistories;
 var

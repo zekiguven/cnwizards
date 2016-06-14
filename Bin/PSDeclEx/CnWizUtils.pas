@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -58,7 +58,7 @@ type
   TCnCompiler = (cnDelphi5, cnDelphi6, cnDelphi7, cnDelphi8, cnDelphi9,
     cnDelphi10, cnDelphi11, cnDelphi12, cnDelphi14, cnDelphi15, cnDelphi16,
     cnDelphi17, cnDelphiXE4, cnDelphiXE5, cnDelphiXE6, cnDelphiXE7, cnDelphiXE8,
-    cnDelphi10S, cnBCB5, cnBCB6);
+    cnDelphi10S, cnDelphi101B, cnBCB5, cnBCB6);
   TCnCompilers = set of TCnCompiler;
 
 const
@@ -94,6 +94,7 @@ const
   _DELPHIXE7 = {$IFDEF DELPHIXE7}True{$ELSE}False{$ENDIF};
   _DELPHIXE8 = {$IFDEF DELPHIXE8}True{$ELSE}False{$ENDIF};
   _DELPHI10_SEATTLE = {$IFDEF DELPHI10_SEATTLE}True{$ELSE}False{$ENDIF};
+  _DELPHI101_BERLIN = {$IFDEF DELPHI101_BERLIN}True{$ELSE}False{$ENDIF};
 
   _DELPHI1_UP = {$IFDEF DELPHI1_UP}True{$ELSE}False{$ENDIF};
   _DELPHI2_UP = {$IFDEF DELPHI2_UP}True{$ELSE}False{$ENDIF};
@@ -117,6 +118,7 @@ const
   _DELPHIXE7_UP = {$IFDEF DELPHIXE7_UP}True{$ELSE}False{$ENDIF};
   _DELPHIXE8_UP = {$IFDEF DELPHIXE8_UP}True{$ELSE}False{$ENDIF};
   _DELPHI10_SEATTLE_UP = {$IFDEF DELPHI10_SEATTLE_UP}True{$ELSE}False{$ENDIF};
+  _DELPHI101_BERLIN_UP = {$IFDEF DELPHI101_BERLIN_UP}True{$ELSE}False{$ENDIF};
 
   _BCB1 = {$IFDEF BCB1}True{$ELSE}False{$ENDIF};
   _BCB3 = {$IFDEF BCB3}True{$ELSE}False{$ENDIF};
@@ -137,6 +139,7 @@ const
   _BCBXE7 = {$IFDEF BCBXE7}True{$ELSE}False{$ENDIF};
   _BCBXE8 = {$IFDEF BCBXE8}True{$ELSE}False{$ENDIF};
   _BCB10_SEATTLE = {$IFDEF BCB10_SEATTLE}True{$ELSE}False{$ENDIF};
+  _BCB101_BERLIN = {$IFDEF BCB101_BERLIN}True{$ELSE}False{$ENDIF};
 
   _BCB1_UP = {$IFDEF BCB1_UP}True{$ELSE}False{$ENDIF};
   _BCB3_UP = {$IFDEF BCB3_UP}True{$ELSE}False{$ENDIF};
@@ -157,6 +160,7 @@ const
   _BCBXE7_UP = {$IFDEF BCBXE7_UP}True{$ELSE}False{$ENDIF};
   _BCBXE8_UP = {$IFDEF BCBXE8_UP}True{$ELSE}False{$ENDIF};
   _BCB10_SEATTLE_UP = {$IFDEF BCB10_SEATTLE_UP}True{$ELSE}False{$ENDIF};
+  _BCB101_BERLIN_UP = {$IFDEF BCB101_BERLIN_UP}True{$ELSE}False{$ENDIF};
 
   _KYLIX1 = {$IFDEF KYLIX1}True{$ELSE}False{$ENDIF};
   _KYLIX2 = {$IFDEF KYLIX2}True{$ELSE}False{$ENDIF};
@@ -181,6 +185,7 @@ const
   _BDS15 = {$IFDEF BDS15}True{$ELSE}False{$ENDIF};
   _BDS16 = {$IFDEF BDS16}True{$ELSE}False{$ENDIF};
   _BDS17 = {$IFDEF BDS17}True{$ELSE}False{$ENDIF};
+  _BDS18 = {$IFDEF BDS18}True{$ELSE}False{$ENDIF};
 
   _BDS2_UP = {$IFDEF BDS2_UP}True{$ELSE}False{$ENDIF};
   _BDS3_UP = {$IFDEF BDS3_UP}True{$ELSE}False{$ENDIF};
@@ -197,6 +202,7 @@ const
   _BDS15_UP = {$IFDEF BDS15_UP}True{$ELSE}False{$ENDIF};
   _BDS16_UP = {$IFDEF BDS16_UP}True{$ELSE}False{$ENDIF};
   _BDS17_UP = {$IFDEF BDS17_UP}True{$ELSE}False{$ENDIF};
+  _BDS18_UP = {$IFDEF BDS18_UP}True{$ELSE}False{$ENDIF};
 
   _COMPILER1 = {$IFDEF COMPILER1}True{$ELSE}False{$ENDIF};
   _COMPILER2 = {$IFDEF COMPILER2}True{$ELSE}False{$ENDIF};
@@ -221,6 +227,7 @@ const
   _COMPILER21 = {$IFDEF COMPILER21}True{$ELSE}False{$ENDIF};
   _COMPILER22 = {$IFDEF COMPILER22}True{$ELSE}False{$ENDIF};
   _COMPILER23 = {$IFDEF COMPILER23}True{$ELSE}False{$ENDIF};
+  _COMPILER24 = {$IFDEF COMPILER24}True{$ELSE}False{$ENDIF};
 
   _COMPILER1_UP = {$IFDEF COMPILER1_UP}True{$ELSE}False{$ENDIF};
   _COMPILER2_UP = {$IFDEF COMPILER2_UP}True{$ELSE}False{$ENDIF};
@@ -245,6 +252,7 @@ const
   _COMPILER21_UP = {$IFDEF COMPILER21_UP}True{$ELSE}False{$ENDIF};
   _COMPILER22_UP = {$IFDEF COMPILER22_UP}True{$ELSE}False{$ENDIF};
   _COMPILER23_UP = {$IFDEF COMPILER23_UP}True{$ELSE}False{$ENDIF};
+  _COMPILER24_UP = {$IFDEF COMPILER24_UP}True{$ELSE}False{$ENDIF};
 
   _SUPPORT_OTA_PROJECT_CONFIGURATION = {$IFDEF SUPPORT_OTA_PROJECT_CONFIGURATION}True{$ELSE}False{$ENDIF};
   _SUPPORT_CROSS_PLATFORM = {$IFDEF SUPPORTS_CROSS_PLATFORM}True{$ELSE}False{$ENDIF};
@@ -262,6 +270,21 @@ type
 
 function CnIntToObject(AInt: Integer): TObject;
 {* 供 Pascal Script 使用的将整型值转换成 TObject 的函数}
+function CnObjectToInt(AObject: TObject): Integer;
+{* 供 Pascal Script 使用的将 TObject 转换成整型值的函数}
+function CnIntToInterface(AInt: Integer): IUnknown;
+{* 供 Pascal Script 使用的将整型值转换成 TObject 的函数}
+function CnInterfaceToInt(Intf: IUnknown): Integer;
+{* 供 Pascal Script 使用的将 TObject 转换成整型值的函数}
+function CnGetClassFromClassName(const AClassName: string): Integer;
+{* 供 Pascal Script 使用的从类名获取类信息并转换成整型值的函数}
+function CnGetClassFromObject(AObject: TObject): Integer;
+{* 供 Pascal Script 使用的从对象获取类信息并转换成整型值的函数}
+function CnGetClassNameFromClass(AClass: Integer): string;
+{* 供 Pascal Script 使用的从整型的类信息获取类名的函数}
+function CnGetClassParentFromClass(AClass: Integer): Integer;
+{* 供 Pascal Script 使用的从整型的类信息获取父类信息的函数}
+
 function CnWizLoadIcon(AIcon: TIcon; const ResName: string): Boolean;
 {* 从资源或文件中装载图标，执行时先从图标目录中查找，如果失败再从资源中查找，
    返回结果为图标装载成功标志。参数 ResName 请不要带 .ico 扩展名}
@@ -397,6 +420,12 @@ function CurrentIsCSource: Boolean;
 {* 当前编辑的文件是C源文件}
 function CurrentIsSource: Boolean;
 {* 当前编辑的文件是Delphi或C源文件}
+function CurrentSourceIsDelphi: Boolean;
+{* 当前编辑的源文件（非窗体）是Delphi源文件}
+function CurrentSourceIsC: Boolean;
+{* 当前编辑的源文件（非窗体）是C源文件}
+function CurrentSourceIsDelphiOrCSource: Boolean;
+{* 当前编辑的源文件（非窗体）是Delphi或C源文件}
 function CurrentIsForm: Boolean;
 {* 当前编辑的文件是窗体文件}
 function ExtractUpperFileExt(const FileName: string): string;
@@ -477,6 +506,8 @@ function CnOtaGetEditBuffer: IOTAEditBuffer;
 {* 取IOTAEditBuffer接口}
 function CnOtaGetEditPosition: IOTAEditPosition;
 {* 取IOTAEditPosition接口}
+function CnOtaGetTopOpenedEditViewFromFileName(const FileName: string; ForceOpen: Boolean): IOTAEditView;
+{* 根据文件名返回编辑器中打开的第一个 EditView，未打开则返回 nil}
 function CnOtaGetTopMostEditView(SourceEditor: IOTASourceEditor): IOTAEditView; overload;
 {* 取指定编辑器最前端的IOTAEditView接口}
 function CnOtaGetTopMostEditActions: IOTAEditActions;
@@ -491,6 +522,10 @@ function CnOtaGetFormEditorFromModule(const Module: IOTAModule): IOTAFormEditor;
 {* 取窗体编辑器}
 function CnOtaGetCurrentFormEditor: IOTAFormEditor;
 {* 取当前窗体编辑器}
+function CnOtaGetDesignContainerFromEditor(FormEditor: IOTAFormEditor): TWinControl;
+{* 取得窗体编辑器的容器控件}
+function CnOtaGetCurrentDesignContainer: TWinControl;
+{* 取得当前窗体编辑器的容器控件}
 function CnOtaGetSelectedControlFromCurrentForm(List: TList): Boolean;
 {* 取得当前窗体编辑器的已选择的控件}
 function CnOtaShowFormForModule(const Module: IOTAModule): Boolean;
@@ -862,6 +897,34 @@ function CnIntToObject(AInt: Integer): TObject;
 begin
 end;
 
+function CnObjectToInt(AObject: TObject): Integer;
+begin
+end;
+
+function CnIntToInterface(AInt: Integer): IUnknown;
+begin
+end;
+
+function CnInterfaceToInt(Intf: IUnknown): Integer;
+begin
+end;
+
+function CnGetClassFromClassName(const AClassName: string): Integer;
+begin
+end;
+
+function CnGetClassFromObject(AObject: TObject): Integer;
+begin
+end;
+
+function CnGetClassNameFromClass(AClass: Integer): string;
+begin
+end;
+
+function CnGetClassParentFromClass(AClass: Integer): Integer;
+begin
+end;
+
 function CnWizLoadIcon(AIcon: TIcon; const ResName: string): Boolean;
 begin
 end;
@@ -1081,6 +1144,18 @@ function CurrentIsSource: Boolean;
 begin
 end;
 
+function CurrentSourceIsDelphi: Boolean;
+begin
+end;
+
+function CurrentSourceIsC: Boolean;
+begin
+end;
+
+function CurrentSourceIsDelphiOrCSource: Boolean;
+begin
+end;
+
 function CurrentIsForm: Boolean;
 begin
 end;
@@ -1229,6 +1304,10 @@ function CnOtaGetEditPosition: IOTAEditPosition;
 begin
 end;
 
+function CnOtaGetTopOpenedEditViewFromFileName(const FileName: string; ForceOpen: Boolean): IOTAEditView;
+begin
+end;
+
 function CnOtaGetTopMostEditView(SourceEditor: IOTASourceEditor): IOTAEditView; overload;
 begin
 end;
@@ -1254,6 +1333,14 @@ begin
 end;
 
 function CnOtaGetCurrentFormEditor: IOTAFormEditor;
+begin
+end;
+
+function CnOtaGetDesignContainerFromEditor(FormEditor: IOTAFormEditor): TWinControl;
+begin
+end;
+
+function CnOtaGetCurrentDesignContainer: TWinControl;
 begin
 end;
 

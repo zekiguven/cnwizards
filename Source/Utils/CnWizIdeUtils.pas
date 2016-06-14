@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -40,7 +40,9 @@ unit CnWizIdeUtils;
 * 兼容测试：PWin9X/2000/XP + Delphi 5/6/7 + C++Builder 5/6
 * 本 地 化：该窗体中的字符串均符合本地化处理方式
 * 单元标识：$Id$
-* 修改记录：2012.09.19 by shenloqi
+* 修改记录：2016.04.04 by liuxiao
+*               增加 2010 以上版本的新风格控件板的支持
+*           2012.09.19 by shenloqi
 *               移植到Delphi XE3
 *           2005.05.06 V1.3
 *               hubdog 增加 获取版本信息的函数
@@ -91,9 +93,9 @@ const
   DisassemblyViewClassName = 'TDisassemblyView';
 {$IFDEF BDS}
   {$IFDEF BDS4_UP} // BDS 2006 RAD Studio 2007 的标签页类名
-  XTabControlClassName = 'TIDEGradientTabSet';
+  XTabControlClassName = 'TIDEGradientTabSet';   // TWinControl 子类
   {$ELSE} // BDS 2005 的标签页类名
-  XTabControlClassName = 'TCodeEditorTabControl';
+  XTabControlClassName = 'TCodeEditorTabControl'; // TTabSet 子类
   {$ENDIF}
 {$ELSE} // Delphi BCB 的标签页类名
   XTabControlClassName = 'TXTabControl';
@@ -127,6 +129,16 @@ const
   SCnPalettePropSelector = 'Selector';
   SCnPalettePropPalToolCount = 'PalToolCount';
 
+  // D2010 或以上版本的新控件板，一个 TComponentToolbarFrame 里包着 TGradientTabSet
+  SCnNewPaletteFrameClassName = 'TComponentToolbarFrame';
+  SCnNewPaletteFrameName = 'ComponentToolbarFrame';
+  SCnNewPaletteTabClassName = 'TGradientTabSet';
+  SCnNewPaletteTabName = 'TabControl';
+  SCnNewPaletteTabItemsPropName = 'Items';
+  SCnNewPaletteTabIndexPropName = 'TabIndex';
+  SCnNewPalettePanelContainerName = 'PanelButtons';
+  SCnNewPaletteButtonClassName = 'TPalItemSpeedButton';
+  
   // 消息窗口
   SCnMessageViewFormClassName = 'TMessageViewForm';
   SCnMessageViewTabSetName = 'MessageGroups';
@@ -152,7 +164,11 @@ const
 
 type
 {$IFDEF BDS}
+  {$IFDEF BDS2006_UP}
+  TXTabControl = TWinControl;
+  {$ELSE}
   TXTabControl = TTabSet;
+  {$ENDIF}
 {$ELSE}
   TXTabControl = TTabControl;
 {$ENDIF BDS}
@@ -244,7 +260,13 @@ function GetIdeEdition: string;
 {* 返回 IDE 版本}
 
 function GetComponentPaletteTabControl: TTabControl;
-{* 返回组件面板对象，可能为空}
+{* 返回组件面板对象，可能为空，只支持 2010 以下版本}
+
+function GetNewComponentPaletteTabControl: TWinControl;
+{* 返回 2010 或以上的新组件面板上半部分 Tab 对象，可能为空}
+
+function GetNewComponentPaletteComponentPanel: TWinControl;
+{* 返回 2010 或以上的新组件面板下半部分容纳组件列表的容器对象，可能为空}
 
 function GetObjectInspectorForm: TCustomForm;
 {* 返回对象检查器窗体，可能为空}
@@ -325,6 +347,12 @@ function GetCurrentEditControl: TControl;
 function GetTabControlFromEditorForm(AForm: TCustomForm): TXTabControl;
 {* 返回编辑器窗口的 TabControl 控件 }
 
+function GetEditorTabTabs(ATab: TXTabControl): TStrings;
+{* 返回编辑器 TabControl 控件的 Tabs 属性}
+
+function GetEditorTabTabIndex(ATab: TXTabControl): Integer;
+{* 返回编辑器 TabControl 控件的 Index 属性}
+
 function GetStatusBarFromEditor(EditControl: TControl): TStatusBar;
 {* 从编辑器控件获得其所属的编辑器窗口的状态栏}
 
@@ -350,6 +378,7 @@ function ConvertIDETreeNodeToTreeNode(Node: TObject): TTreeNode;
 function ConvertIDETreeNodesToTreeNodes(Nodes: TObject): TTreeNodes;
 {* 将 IDE 内部使用的 TTreeControl的 Items 属性值的 TreeNodes 强行转换成公用的 TreeNodes}
 
+
 //==============================================================================
 // 扩展控件
 //==============================================================================
@@ -369,13 +398,25 @@ type
 { TCnPaletteWrapper }
 
   TCnPaletteWrapper = class(TObject)
-  {* 封装了控件板各个属性的类 }
+  {* 封装了控件板各个属性的类，大部分只支持低版本控件板
+     高版本控件板由上下两个 Panel 组成，上面 Panel 容纳 TGradientTab 与 ToolbarSearch
+     下面 Panel 容纳滚动按钮以及多个 TPalItemSpeedButton 的控件图标按钮
+   }
   private
-    FPalTab: TWinControl;
-    FPalette: TWinControl;
+    FPalTab: TWinControl;  // 低版本指大的 TabControl 容器，高版本指上半部分的 TGradientTabSet
+    FPalette: TWinControl; // 低版本指大的 TabControl 内的组件容器，高版本指下半部分的组件容器
+{$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
     FPageScroller: TWinControl;
+{$ENDIF}
     FUpdateCount: Integer;
-
+{$IFDEF COMPILER6_UP}
+  {$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    FOldRootClass: TClass;
+  {$ENDIF}
+{$ENDIF}
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    function ParseNameFromHint(const Hint: string): string;
+{$ENDIF}
     function GetSelectedIndex: Integer;
     function GetSelectedToolName: string;
     function GetSelector: TSpeedButton;
@@ -391,6 +432,13 @@ type
     function GetEnabled: Boolean;
     procedure SetEnabled(const Value: Boolean);
     function GetTabs(Index: Integer): string;
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    procedure GetComponentImageFromNewPalette(Bmp: TBitmap; const AComponentClassName: string);
+  {$ELSE}
+    procedure GetComponentImageFromOldPalette(Bmp: TBitmap; const AComponentClassName: string);
+  {$ENDIF}
+{$ENDIF}
   public
     constructor Create;
 
@@ -402,28 +450,30 @@ type
     {* 根据类名选中控件板中的某控件，返回是否成功 }
     function FindTab(const ATab: string): Integer;
     {* 查找某页面的索引 }
+    procedure GetComponentImage(Bmp: TBitmap; const AComponentClassName: string);
+    {* 将控件板上指定的组件名的图标绘制到 Bmp 中，Bmp 推荐尺寸为 26 * 26}
     property SelectedIndex: Integer read GetSelectedIndex write SetSelectedIndex;
-    {* 按下的控件在本页的序号，0 开头 }
+    {* 按下的控件在本页的序号，0 开头，支持高版本的新控件板 }
     property SelectedToolName: string read GetSelectedToolName;
-    {* 按下的控件的类名，未按下则为空 }
+    {* 按下的控件的类名，未按下则为空，支持高版本的新控件板 }
     property Selector: TSpeedButton read GetSelector;
-    {* 用来切换到鼠标光标的 SpeedButton }
+    {* 获得用来切换到鼠标光标的 SpeedButton，低版本在组件区内，高版本在 Tab 头中 }
     property PalToolCount: Integer read GetPalToolCount;
-    {* 当前页控件个数 }
+    {* 当前页控件个数，支持高版本的新控件板 }
     property ActiveTab: string read GetActiveTab;
-    {* 当前页标题 }
+    {* 当前页标题，支持高版本的新控件板 }
     property TabIndex: Integer read GetTabIndex write SetTabIndex;
-    {* 当前页索引 }
+    {* 当前页索引，支持高版本的新控件板 }
     property Tabs[Index: Integer]: string read GetTabs;
-    {* 根据索引得到页名称 }
+    {* 根据索引得到页名称，支持高版本的新控件板 }
     property TabCount: Integer read GetTabCount;
-    {* 控件板总页数 }
+    {* 控件板总页数，支持高版本的新控件板 }
     property IsMultiLine: Boolean read GetIsMultiLine;
-    {* 控件板是否多行 }
+    {* 控件板是否多行，支持高版本的新控件板但高版本新控件板不支持多行 }
     property Visible: Boolean read GetVisible write SetVisible;
-    {* 控件板是否可见 }
+    {* 控件板是否可见，支持高版本的新控件板 }
     property Enabled: Boolean read GetEnabled write SetEnabled;
-    {* 控件板是否使能 }
+    {* 控件板是否使能，支持高版本的新控件板 }
   end;
 
 {TCnMessageViewWrapper}
@@ -973,7 +1023,7 @@ begin
   Result := Application.FindComponent('AppBuilder') as TCustomForm;
 {$IFDEF DEBUG}
   if Result = nil then
-    CnDebugger.LogMsg('Unable to find AppBuilder!');
+    CnDebugger.LogMsgError('Unable to Find AppBuilder!');
 {$ENDIF}
 end;
 
@@ -1005,9 +1055,48 @@ begin
   MainForm := GetIdeMainForm;
   if MainForm <> nil then
     Result := MainForm.FindComponent('TabControl') as TTabControl;
+
 {$IFDEF DEBUG}
   if Result = nil then
-    CnDebugger.LogMsg('Unable to find TabControl!');
+    CnDebugger.LogMsgError('Unable to Find ComponentPalette TabControl!');
+{$ENDIF}
+end;
+
+// 返回 2010 或以上的新组件面板上半部分 Tab 对象，可能为空
+function GetNewComponentPaletteTabControl: TWinControl;
+var
+  MainForm: TCustomForm;
+begin
+  Result := nil;
+
+  MainForm := GetIdeMainForm;
+  if MainForm <> nil then
+    Result := MainForm.FindComponent(SCnNewPaletteFrameName) as TWinControl;
+  if Result <> nil then
+    Result := Result.FindComponent(SCnNewPaletteTabName) as TWinControl;
+
+{$IFDEF DEBUG}
+  if Result = nil then
+    CnDebugger.LogMsgError('Unable to Find New ComponentPalette TabControl!');
+{$ENDIF}
+end;
+
+// 返回 2010 或以上的新组件面板下半部分容纳组件列表的容器对象，可能为空
+function GetNewComponentPaletteComponentPanel: TWinControl;
+var
+  MainForm: TCustomForm;
+begin
+  Result := nil;
+
+  MainForm := GetIdeMainForm;
+  if MainForm <> nil then
+    Result := MainForm.FindComponent(SCnNewPaletteFrameName) as TWinControl;
+  if Result <> nil then
+    Result := Result.FindComponent(SCnNewPalettePanelContainerName) as TWinControl;
+
+{$IFDEF DEBUG}
+  if Result = nil then
+    CnDebugger.LogMsgError('Unable to Find New ComponentPalette Panel!');
 {$ENDIF}
 end;
 
@@ -1019,7 +1108,7 @@ begin
     Result := TCustomForm(Result.FindComponent('PropertyInspector'));
 {$IFDEF DEBUG}
   if Result = nil then
-    CnDebugger.LogMsg('Unable to find object inspector!');
+    CnDebugger.LogMsgError('Unable to Find Oject Inspector!');
 {$ENDIF}
 end;
 
@@ -1034,7 +1123,7 @@ begin
     Result := TPopupMenu(MainForm.FindComponent('PaletteMenu'));
 {$IFDEF DEBUG}
   if Result = nil then
-    CnDebugger.LogMsg('Unable to find PaletteMenu!');
+    CnDebugger.LogMsgError('Unable to Find PaletteMenu!');
 {$ENDIF}
 end;
 
@@ -1057,7 +1146,7 @@ begin
       
 {$IFDEF DEBUG}
   if Result = nil then
-    CnDebugger.LogMsg('Unable to find ControlBar!');
+    CnDebugger.LogMsgError('Unable to Find ControlBar!');
 {$ENDIF}
 end;
 
@@ -1178,7 +1267,11 @@ begin
 {$IFDEF DELPHI10_SEATTLE}
   Result := Result + 'Embarcadero\BDS\17.0';
 {$ELSE}
+{$IFDEF DELPHI101_BERLIN}
+  Result := Result + 'Embarcadero\BDS\18.0';
+{$ELSE}
   Error: Unknown Compiler
+{$ENDIF}
 {$ENDIF}
 {$ENDIF}
 {$ENDIF}
@@ -1670,6 +1763,34 @@ begin
     XTabControlName));
 end;
 
+// 返回编辑器 TabControl 控件的 Tabs 属性
+function GetEditorTabTabs(ATab: TXTabControl): TStrings;
+begin
+  Result := nil;
+  if ATab <> nil then
+  begin
+{$IFDEF EDITOR_TAB_ONLYFROM_WINCONTROL}
+    Result := TStrings(GetObjectProp(ATab, 'Items'));
+{$ELSE}
+    Result := ATab.Tabs;
+{$ENDIF}
+  end;
+end;
+
+// 返回编辑器 TabControl 控件的 Index 属性
+function GetEditorTabTabIndex(ATab: TXTabControl): Integer;
+begin
+  Result := -1;
+  if ATab <> nil then
+  begin
+{$IFDEF EDITOR_TAB_ONLYFROM_WINCONTROL}
+    Result := GetOrdProp(ATab, 'TabIndex');
+{$ELSE}
+    Result := ATab.TabIndex;
+{$ENDIF}
+  end;
+end;
+
 // 枚举 IDE 中的代码编辑器窗口和 EditControl 控件，调用回调函数，返回总数
 function EnumEditControl(Proc: TEnumEditControlProc; Context: Pointer;
   EditorMustExists: Boolean): Integer;
@@ -1800,6 +1921,9 @@ begin
     inherited;
 end;
 
+var
+  FCnMessageViewWrapper: TCnMessageViewWrapper = nil;
+
 //==============================================================================
 // 组件面板封装类
 //==============================================================================
@@ -1808,13 +1932,16 @@ end;
 
 var
   FCnPaletteWrapper: TCnPaletteWrapper = nil;
-  FCnMessageViewWrapper: TCnMessageViewWrapper = nil;
 
 function CnPaletteWrapper: TCnPaletteWrapper;
 begin
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
   if FCnPaletteWrapper = nil then
     FCnPaletteWrapper := TCnPaletteWrapper.Create;
   Result := FCnPaletteWrapper;
+{$ELSE}
+  raise Exception.Create('Palette NOT Support.');
+{$ENDIF}
 end;
 
 procedure TCnPaletteWrapper.BeginUpdate;
@@ -1828,9 +1955,16 @@ begin
 end;
 
 constructor TCnPaletteWrapper.Create;
+{$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
 var
   I, J: Integer;
+{$ENDIF}
 begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  FPalTab := GetNewComponentPaletteTabControl;
+  if FPalTab <> nil then
+    FPalette := FPalTab.Owner.FindComponent(SCnNewPalettePanelContainerName) as TWinControl;
+{$ELSE}
   FPalTab := GetComponentPaletteTabControl;
 
   for I := 0 to FPalTab.ControlCount - 1 do
@@ -1846,6 +1980,7 @@ begin
         end;
     end;
   end;
+{$ENDIF}
 end;
 
 procedure TCnPaletteWrapper.EndUpdate;
@@ -1874,15 +2009,130 @@ begin
 end;
 
 function TCnPaletteWrapper.GetActiveTab: string;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+var
+  TabList: TStrings;
+{$ENDIF}
 begin
   Result := '';
   if FPalTab <> nil then
+  begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    TabList := GetObjectProp(FPalTab, SCnNewPaletteTabItemsPropName) as TStrings;
+    if TabList <> nil then
+      Result := TabList[GetOrdProp(FPalTab, SCnNewPaletteTabIndexPropName)];
+{$ELSE}
     Result := (FPalTab as TTabControl).Tabs.Strings[(FPalTab as TTabControl).TabIndex];
+{$ENDIF}
+  end;
 end;
+
+procedure TCnPaletteWrapper.GetComponentImage(Bmp: TBitmap;
+  const AComponentClassName: string);
+begin
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+  {$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  GetComponentImageFromNewPalette(Bmp, AComponentClassName);
+  {$ELSE}
+  GetComponentImageFromOldPalette(Bmp, AComponentClassName);
+  {$ENDIF}
+{$ENDIF}
+end;
+
+{$IFDEF SUPPORTS_PALETTE_ENHANCE}
+
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+
+procedure TCnPaletteWrapper.GetComponentImageFromNewPalette(Bmp: TBitmap;
+  const AComponentClassName: string);
+var
+  I, J: Integer;
+  S: string;
+begin
+  if (Bmp = nil) or (AComponentClassName = '') then
+    Exit;
+  try
+    BeginUpdate;
+    for I := 0 to TabCount - 1 do
+    begin
+      TabIndex := I;
+      for J := 0 to FPalette.ControlCount - 1 do
+      begin
+        if (FPalette.Controls[J] is TSpeedButton) and
+          FPalette.Controls[J].ClassNameIs(SCnNewPaletteButtonClassName) then
+        begin
+          S := ParseNameFromHint((FPalette.Controls[J] as TSpeedButton).Hint);
+          if S = AComponentClassName then
+          begin
+            GetControlBitmap(FPalette.Controls[J], Bmp);
+            Exit;
+          end;
+        end;
+      end;
+    end;
+  finally
+    EndUpdate;
+  end;
+end;
+
+{$ELSE}
+
+procedure TCnPaletteWrapper.GetComponentImageFromOldPalette(Bmp: TBitmap;
+  const AComponentClassName: string);
+var
+  AClass: TComponentClass;
+{$IFDEF COMPILER6_UP}
+  FormEditor: IOTAFormEditor;
+  Root: TPersistent;
+  PalItem: IPaletteItem;
+  PalItemPaint: IPalettePaint;
+{$ENDIF}
+begin
+  if (Bmp = nil) or (AComponentClassName = '') then
+    Exit;
+
+  try
+{$IFDEF COMPILER6_UP}
+    FormEditor := CnOtaGetCurrentFormEditor;
+    if Assigned(FormEditor) and (FormEditor.GetSelComponent(0) <> nil) then
+    begin
+      Root := TPersistent(FormEditor.GetSelComponent(0).GetComponentHandle);
+      if (Root <> nil) and not ObjectIsInheritedFromClass(Root, 'TDataModule') then
+      begin
+        // 只处理 CLX 和 VCL 设计期窗体变化的情况，转变 CLX/VCL 后，无需恢复
+        if FOldRootClass <> Root.ClassType then
+        begin
+          ActivateClassGroup(TPersistentClass(Root.ClassType));
+          FOldRootClass := Root.ClassType;
+        end;
+      end;
+    end;
+{$ENDIF}
+
+    AClass := TComponentClass(GetClass(AComponentClassName));
+    if AClass <> nil then
+    begin
+      Bmp.Canvas.FillRect(Bounds(0, 0, Bmp.Width, Bmp.Height));
+{$IFDEF COMPILER6_UP}
+      PalItem := ComponentDesigner.ActiveDesigner.Environment.GetPaletteItem(AClass) as IPaletteItem;
+      if Supports(PalItem, IPalettePaint, PalItemPaint) then
+        PalItemPaint.Paint(Bmp.Canvas, 0, 0);
+{$ELSE}
+      DelphiIDE.GetPaletteItem(TComponentClass(AClass)).Paint(Bmp.Canvas, -1, -1);
+{$ENDIF}
+    end;
+  except
+    ;
+  end;
+end;
+
+{$ENDIF}
+
+{$ENDIF}
 
 function TCnPaletteWrapper.GetEnabled: Boolean;
 begin
-  if FPalette <> nil then
+  if FPalTab <> nil then
     Result := FPalTab.Enabled
   else
     Result := False;
@@ -1890,7 +2140,11 @@ end;
 
 function TCnPaletteWrapper.GetIsMultiLine: Boolean;
 begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE} // 新控件板不支持多行
+  Result := False;
+{$ELSE}
   Result := (FPalTab as TTabControl).MultiLine;
+{$ENDIF}
 end;
 
 function TCnPaletteWrapper.GetPalToolCount: Integer;
@@ -1898,6 +2152,17 @@ var
   I: Integer;
 begin
   Result := -1;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  if FPalette <> nil then
+  begin
+    for I := 0 to FPalette.ControlCount - 1 do
+    begin
+      if (FPalette.Controls[I] is TSpeedButton) and
+        FPalette.Controls[I].ClassNameIs(SCnNewPaletteButtonClassName) then
+        Inc(Result);
+    end;
+  end;
+{$ELSE}
   try
     if FPalette <> nil then
       Result := GetPropValue(FPalette, SCnPalettePropPalToolCount)
@@ -1908,25 +2173,70 @@ begin
         if Self.FPageScroller.Controls[I] is TSpeedButton then
           Inc(Result);
   end;
+{$ENDIF}
 end;
 
 function TCnPaletteWrapper.GetSelectedIndex: Integer;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+var
+  I, Idx: Integer;
+{$ENDIF}
 begin
   Result := -1;
   try
     if FPalette <> nil then
-      Result := GetPropValue(FPalette, SCnPalettePropSelectedIndex)
+    begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+      Idx := -1;
+      for I := 0 to FPalette.ControlCount - 1 do
+      begin
+        if (FPalette.Controls[I] is TSpeedButton) and
+          FPalette.Controls[I].ClassNameIs(SCnNewPaletteButtonClassName) then
+        begin
+          Inc(Idx);
+          if (FPalette.Controls[I] as TSpeedButton).Down then
+          begin
+            Result := Idx;
+            Exit;
+          end;
+        end;
+      end;
+{$ELSE}
+      Result := GetPropValue(FPalette, SCnPalettePropSelectedIndex);
+{$ENDIF}
+    end;
   except
     ;
   end;
 end;
 
 function TCnPaletteWrapper.GetSelectedToolName: string;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+var
+  I: Integer;
+{$ENDIF}
 begin
   Result := '';
   try
     if FPalette <> nil then
-      Result := GetPropValue(FPalette, SCnPalettePropSelectedToolName)
+    begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+      for I := 0 to FPalette.ControlCount - 1 do
+      begin
+        if (FPalette.Controls[I] is TSpeedButton) and
+          FPalette.Controls[I].ClassNameIs(SCnNewPaletteButtonClassName) then
+        begin
+          if (FPalette.Controls[I] as TSpeedButton).Down then
+          begin
+            Result := ParseNameFromHint((FPalette.Controls[I] as TSpeedButton).Hint);
+            Exit;
+          end;
+        end;
+      end;
+{$ELSE}
+      Result := GetPropValue(FPalette, SCnPalettePropSelectedToolName);
+{$ENDIF}
+    end;
   except
     ;
   end;
@@ -1944,9 +2254,23 @@ begin
 end;
 
 function TCnPaletteWrapper.GetTabCount: Integer;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+var
+  TabList: TStrings;
+{$ENDIF}
 begin
   if FPalTab <> nil then
-    Result := (FPalTab as TTabControl).Tabs.Count
+  begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    TabList := GetObjectProp(FPalTab, SCnNewPaletteTabItemsPropName) as TStrings;
+    if TabList <> nil then
+      Result := TabList.Count
+    else
+      Result := 0;
+{$ELSE}
+    Result := (FPalTab as TTabControl).Tabs.Count;
+{$ENDIF}
+  end
   else
     Result := 0;
 end;
@@ -1954,31 +2278,106 @@ end;
 function TCnPaletteWrapper.GetTabIndex: Integer;
 begin
   if FPalTab <> nil then
-    Result := (FPalTab as TTabControl).TabIndex
+  begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    Result := GetOrdProp(FPalTab, SCnNewPaletteTabIndexPropName);
+{$ELSE}
+    Result := (FPalTab as TTabControl).TabIndex;
+{$ENDIF}
+  end
   else
     Result := -1;
 end;
 
 function TCnPaletteWrapper.GetTabs(Index: Integer): string;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+var
+  TabList: TStrings;
+{$ENDIF}
 begin
   if FPalette <> nil then
-    Result := (FPalTab as TTabControl).Tabs[Index]
+  begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    TabList := GetObjectProp(FPalTab, SCnNewPaletteTabItemsPropName) as TStrings;
+    if TabList <> nil then
+      Result := TabList[Index]
+    else
+      Result := '';
+{$ELSE}
+    Result := (FPalTab as TTabControl).Tabs[Index];
+{$ENDIF}
+  end
   else
     Result := '';
 end;
 
 function TCnPaletteWrapper.GetVisible: Boolean;
 begin
-  if FPalette <> nil then
+  if FPalTab <> nil then
     Result := FPalTab.Visible
   else
     Result := False;
 end;
 
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+
+function TCnPaletteWrapper.ParseNameFromHint(const Hint: string): string;
+const
+  NamePrefix = 'Name: ';
+  CRLF = #13#10;
+var
+  CRLFPos: Integer;
+begin
+  // 把控件板组件上某组件 SpeedButton 按钮的 Hint 里头的名字解析出来
+  {
+    Hint 形如：
+    Name: ComponentName
+    Unit: UnitName
+    Package: PackageName
+  }
+  Result := Hint;
+  if Pos(NamePrefix, Result) = 1 then
+    Delete(Result, 1, Length(NamePrefix));
+  CRLFPos := Pos(CRLF, Result);
+  if CRLFPos > 0 then
+    Result := Copy(Result, 1, CRLFPos - 1);
+end;
+
+{$ENDIF}
+
 function TCnPaletteWrapper.SelectComponent(const AComponent,
   ATab: string): Boolean;
 var
-  I, J, Idx: Integer;
+  I, Idx: Integer;
+{$IFNDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  J: Integer;
+{$ENDIF}
+
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  function SelectComponentInCurrentTab: Boolean;
+  var
+    K: Integer;
+    S: string;
+  begin
+    Result := False;
+    for K := 0 to FPalette.ControlCount - 1 do
+    begin
+      if (FPalette.Controls[K] is TSpeedButton) and
+        FPalette.Controls[K].ClassNameIs(SCnNewPaletteButtonClassName) then
+      begin
+        S := ParseNameFromHint((FPalette.Controls[K] as TSpeedButton).Hint);
+        if S = AComponent then
+        begin
+          if not (FPalette.Controls[K] as TSpeedButton).Down then
+            (FPalette.Controls[K] as TSpeedButton).Click;
+          Result := True;
+          Exit;
+        end;
+      end;
+    end;
+  end;
+{$ENDIF}
+
 begin
   Result := True;
   Idx := FindTab(ATab);
@@ -1992,43 +2391,81 @@ begin
     Exit;
   end
   else
-  for I := 0 to PalToolCount - 1 do
   begin
-    SelectedIndex := I;
-    if SelectedToolName = AComponent then
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    if SelectComponentInCurrentTab then
       Exit;
+{$ELSE}
+    for I := 0 to PalToolCount - 1 do
+    begin
+      SelectedIndex := I;
+      if SelectedToolName = AComponent then
+        Exit;
+    end;
+{$ENDIF}
   end;
 
   // 该 Tab 内无此组件时，全盘搜索
   for I := 0 to TabCount - 1 do
   begin
     TabIndex := I;
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    if SelectComponentInCurrentTab then
+      Exit;
+{$ELSE}
     for J := 0 to PalToolCount - 1 do
     begin
       SelectedIndex := J;
       if SelectedToolName = AComponent then
         Exit;
     end;
+{$ENDIF}
   end;
-  
+
   SelectedIndex := -1;
   Result := False;
 end;
 
 procedure TCnPaletteWrapper.SetEnabled(const Value: Boolean);
 begin
-  if FPalette <> nil then
+  if FPalTab <> nil then
     FPalTab.Enabled := Value;
 end;
 
 procedure TCnPaletteWrapper.SetSelectedIndex(const Value: Integer);
 var
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+  I, Idx: Integer;
+{$ELSE}
   PropInfo: PPropInfo;
+{$ENDIF}
 begin
   if FPalette <> nil then
   begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    Idx := -1;
+    for I := 0 to FPalette.ControlCount - 1 do
+    begin
+      if (FPalette.Controls[I] is TSpeedButton) and
+        FPalette.Controls[I].ClassNameIs(SCnNewPaletteButtonClassName) then
+      begin
+        Inc(Idx);
+        if (Idx = Value) and not (FPalette.Controls[I] as TSpeedButton).Down then
+        begin
+          (FPalette.Controls[I] as TSpeedButton).Click;
+          Exit;
+        end
+        else if (Value = -1) and (FPalette.Controls[I] as TSpeedButton).Down then
+        begin
+          (FPalette.Controls[I] as TSpeedButton).Click;
+          Exit;
+        end;
+      end;
+    end;
+{$ELSE}
     PropInfo := GetPropInfo(FPalette.ClassInfo, SCnPalettePropSelectedIndex);
     SetOrdProp(FPalette, PropInfo, Value);
+{$ENDIF}
   end;
 end;
 
@@ -2036,15 +2473,19 @@ procedure TCnPaletteWrapper.SetTabIndex(const Value: Integer);
 begin
   if FPalTab <> nil then
   begin
+{$IFDEF IDE_HAS_NEW_COMPONENT_PALETTE}
+    SetOrdProp(FPalTab, SCnNewPaletteTabIndexPropName, Value);
+{$ELSE}
     (FPalTab as TTabControl).TabIndex := Value;
     if Assigned((FPalTab as TTabControl).OnChange) then
       (FPalTab as TTabControl).OnChange(FPalTab);
+{$ENDIF}
   end;
 end;
 
 procedure TCnPaletteWrapper.SetVisible(const Value: Boolean);
 begin
-  if FPalette <> nil then
+  if FPalTab <> nil then
     FPalTab.Visible := Value;
 end;
 

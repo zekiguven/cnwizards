@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -120,7 +120,13 @@ function GetIdeEdition: string;
 {* 返回 IDE 版本}
 
 function GetComponentPaletteTabControl: TTabControl;
-{* 返回组件面板对象，可能为空}
+{* 返回组件面板对象，可能为空，只支持 2010 以下版本}
+
+function GetNewComponentPaletteTabControl: TWinControl;
+{* 返回 2010 或以上的新组件面板上半部分 Tab 对象，可能为空}
+
+function GetNewComponentPaletteComponentPanel: TWinControl;
+{* 返回 2010 或以上的新组件面板下半部分容纳组件列表的容器对象，可能为空}
 
 function GetObjectInspectorForm: TCustomForm;
 {* 返回对象检查器窗体，可能为空}
@@ -382,6 +388,14 @@ begin
 end;
 
 function GetComponentPaletteTabControl: TTabControl;
+begin
+end;
+
+function GetNewComponentPaletteTabControl: TWinControl;
+begin
+end;
+
+function GetNewComponentPaletteComponentPanel: TWinControl;
 begin
 end;
 

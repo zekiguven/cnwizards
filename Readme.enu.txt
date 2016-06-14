@@ -1,13 +1,13 @@
 ﻿**********************************************************************
                      CnPack For Delphi/C++Builder
                 A Free, Open Source Project from China
-                 (C)Copyright 2001-2015 CnPack Team
+                 (C)Copyright 2001-2016 CnPack Team
 **********************************************************************
 
                          CnPack IDE Wizards
-                           Version 1.0.9
+                           Version 1.1.0
                        =======================
-                         CnPack Team 2015.12
+                         CnPack Team 2016.02
 
 
 =====================================================
@@ -20,7 +20,7 @@ C++Builder/BDS to improve development efficiency.
 
     CnWizards is designed to aide programmers who use Delphi 5 6 7,
 C++Builder 5 6 and BDS 2005 2006, RAD Studio 2007 2009 2010, XE, XE2,
-XE3, XE4, XE5, XE6, XE7, XE8, 10 Seattle.
+XE3, XE4, XE5, XE6, XE7, XE8, 10 Seattle, 10.1 Berlin.
 
     The offical version of CnWizards includes follow languages: 
 Simplified Chinese, Traditional Chinese, English, Russian and German.

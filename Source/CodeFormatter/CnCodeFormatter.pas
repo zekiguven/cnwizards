@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -88,10 +88,13 @@ type
     procedure RestoreElementType;
     // 区分当前位置并恢复，必须配对使用
     function UpperContainElementType(ElementTypes: TCnPascalFormattingElementTypeSet): Boolean;
-    // 上层是否包含指定的几个 ElementType 之一
+    // 上层是否包含指定的几个 ElementType 之一，不包括当前
+    function CurrentContainElementType(ElementTypes: TCnPascalFormattingElementTypeSet): Boolean;
+    // 上层与当前是否包含指定的几个 ElementType 之一
 
     procedure ResetElementType;
     function CalcNeedPadding: Boolean;
+    function CalcNeedPaddingAndUnIndent: Boolean;
     procedure WriteOneSpace;
   protected
     FIsTypeID: Boolean;
@@ -207,7 +210,8 @@ type
 
     // 泛型支持
     procedure FormatFormalTypeParamList(PreSpaceCount: Byte = 0);
-    procedure FormatTypeParams(PreSpaceCount: Byte = 0);
+    function FormatTypeParams(PreSpaceCount: Byte = 0; AllowFixEndGreateEqual: Boolean = False): Boolean;
+    // AllowFixEndGreateEqual 用来处理泛型结尾 >= 的情况，返回 True 表示遇到了 >=
     procedure FormatTypeParamDeclList(PreSpaceCount: Byte = 0);
     procedure FormatTypeParamDecl(PreSpaceCount: Byte = 0);
     procedure FormatTypeParamList(PreSpaceCount: Byte = 0);
@@ -232,7 +236,8 @@ type
     // MultiCompound 控制可处理多个并列的 begin end，但易和 program/library 的主 begin end 混淆，
     // 并且容易和嵌套的过程函数混淆，所以目前暂时不用
 
-    procedure FormatProgramInnerBlock(PreSpaceCount: Byte = 0; IsInternal: Boolean = False);
+    procedure FormatProgramInnerBlock(PreSpaceCount: Byte = 0; IsInternal: Boolean = False;
+      IsLib: Boolean = False);
     // Program 中的主 begin end 之前的声明不同于嵌套 fucntion 这种声明，因此此处独立
 
     procedure FormatDeclSection(PreSpaceCount: Byte; IndentProcs: Boolean = True;
@@ -360,7 +365,7 @@ type
 
   TCnProgramBlockFormatter = class(TCnTypeSectionFormater)
   protected
-    procedure FormatProgramBlock(PreSpaceCount: Byte = 0);
+    procedure FormatProgramBlock(PreSpaceCount: Byte = 0; IsLib: Boolean = False);
     procedure FormatPackageBlock(PreSpaceCount: Byte = 0);
     procedure FormatUsesClause(PreSpaceCount: Byte = 0; const NeedCRLF: Boolean = False);
     procedure FormatUsesList(PreSpaceCount: Byte = 0; const CanHaveUnitQual: Boolean = True;
@@ -418,6 +423,8 @@ begin
 
   FKeywordsValidArray[tokDirectiveMESSAGE] := [pfetDirective];
   FKeywordsValidArray[tokDirectiveREGISTER] := [pfetDirective];
+  FKeywordsValidArray[tokDirectiveEXPORT] := [pfetDirective];
+  // TODO: 加入其他 Directive
 
   FKeywordsValidArray[tokComplexName] := [pfetDirective];
   FKeywordsValidArray[tokKeywordAlign] := [pfetRecordEnd];
@@ -737,6 +744,7 @@ procedure TCnAbstractCodeFormatter.WriteToken(Token: TPascalToken;
   SemicolonIsLineStart: Boolean; NoSeparateSpace: Boolean);
 var
   NeedPadding: Boolean;
+  NeedUnIndent: Boolean;
 begin
   if CnPascalCodeForRule.UseIgnoreArea and Scaner.InIgnoreArea then
   begin
@@ -764,9 +772,12 @@ begin
   end;
 
   NeedPadding := CalcNeedPadding;
+  NeedUnIndent := CalcNeedPaddingAndUnIndent;
+
   //标点符号的设置
   case Token of
-    tokComma:     CodeGen.Write(Scaner.TokenString, 0, 1, NeedPadding);   // 1 也会导致行尾注释后退，现多出的空格已由 Generator 删除
+    tokComma:
+      CodeGen.Write(Scaner.TokenString, 0, 1, NeedPadding);   // 1 也会导致行尾注释后退，现多出的空格已由 Generator 删除
     tokColon:
       begin
         if IgnorePreSpace then
@@ -784,9 +795,9 @@ begin
           CodeGen.Write(Scaner.TokenString, 0, 1, NeedPadding);
           // 1 也会导致行尾注释后退，现多出的空格已由 Generator 删除
       end;
-    tokAssign:    CodeGen.Write(Scaner.TokenString, 1, 1, NeedPadding);
+    tokAssign:
+      CodeGen.Write(Scaner.TokenString, 1, 1, NeedPadding);
   else
-
     if (Token in KeywordTokens + ComplexTokens + DirectiveTokens) then // 关键字范围扩大
     begin
       if FLastToken = tokAmpersand then // 关键字前是 & 表示非关键字
@@ -817,16 +828,15 @@ begin
         end;
       end;
     end
-
     else if FIsTypeID then // 如果是类型名，则按规则处理 Scaner.TokenString
     begin
       CodeGen.Write(CheckIdentifierName(Scaner.TokenString), BeforeSpaceCount,
         AfterSpaceCount, NeedPadding);
     end
-    else
+    else // 目前只有右括号部分
     begin
       CodeGen.Write(CheckIdentifierName(Scaner.TokenString), BeforeSpaceCount,
-        AfterSpaceCount, NeedPadding);
+        AfterSpaceCount, NeedPadding, NeedUnIndent);
     end;
   end;
 
@@ -1174,6 +1184,7 @@ begin
   while Scaner.Token = tokSLB do // Attribute
   begin
     FormatSingleAttribute(PreSpaceCount);
+    // if not CurrentContainElementType([pfetFormalParameters]) then // 参数列表里的属性不换行
     Writeln;
   end;
 
@@ -1426,11 +1437,19 @@ begin
 end;
 
 { TypeParams -> '<' TypeParamDeclList '>' }
-procedure TCnBasePascalFormatter.FormatTypeParams(PreSpaceCount: Byte);
+function TCnBasePascalFormatter.FormatTypeParams(PreSpaceCount: Byte;
+  AllowFixEndGreateEqual: Boolean): Boolean;
 begin
+  Result := False;
   Match(tokLess);
   FormatTypeParamDeclList(PreSpaceCount);
-  Match(tokGreat);
+  if AllowFixEndGreateEqual and (Scaner.Token = tokGreatOrEqu) then
+  begin
+    Match(tokGreatOrEqu, 0, 1); // TODO: 拆开 > 与 =
+    Result := True;
+  end
+  else
+    Match(tokGreat);
 end;
 
 procedure TCnBasePascalFormatter.FormatTypeParamIdent(PreSpaceCount: Byte);
@@ -2803,9 +2822,14 @@ end;
 { FieldDecl -> IdentList ':' Type }
 procedure TCnBasePascalFormatter.FormatFieldDecl(PreSpaceCount: Byte);
 begin
-  FormatIdentList(PreSpaceCount);
-  Match(tokColon);
-  FormatType(PreSpaceCount);
+  SpecifyElementType(pfetFieldDecl);
+  try
+    FormatIdentList(PreSpaceCount);
+    Match(tokColon);
+    FormatType(PreSpaceCount);
+  finally
+    RestoreElementType;
+  end;
 end;
 
 { FieldList ->  FieldDecl/';'... [VariantSection] [';'] }
@@ -2920,10 +2944,16 @@ begin
   finally
     RestoreElementType;
   end;
-  Match(tokRB);
+
+  SpecifyElementType(pfetFormalParametersRightBracket);
+  try
+    Match(tokRB);
+  finally
+    RestoreElementType;
+  end;
 end;
 
-{ FormalParm -> [Ref] [VAR | CONST | OUT] Parameter }
+{ FormalParm -> [Ref] [VAR | CONST | OUT] [Ref] Parameter }
 procedure TCnBasePascalFormatter.FormatFormalParm(PreSpaceCount: Byte);
 begin
   if Scaner.Token = tokSLB then
@@ -2937,7 +2967,17 @@ begin
   if (Scaner.Token in [tokKeywordVar, tokKeywordConst, tokKeywordOut]) and
      not (Scaner.ForwardToken in [tokColon, tokComma])
   then
+  begin
     Match(Scaner.Token);
+
+    if Scaner.Token = tokSLB then
+    begin
+      Match(tokSLB, 1, 0); // [ 前有个空格
+      if Scaner.Token in KeywordTokens + [tokSymbol] then
+        Match(Scaner.Token);
+      Match(tokSRB, 0, 1); // ] 后有个空格
+    end;
+  end;
 
   FormatParameter;
 end;
@@ -4046,7 +4086,7 @@ end;
 }
 procedure TCnBasePascalFormatter.FormatTypeDecl(PreSpaceCount: Byte);
 var
-  Old: Boolean;
+  Old, GreatEqual: Boolean;
 begin
   while Scaner.Token = tokSLB do
   begin
@@ -4063,14 +4103,14 @@ begin
   end;
 
   // 加入对<>泛型的支持
+  GreatEqual := False;
   if Scaner.Token = tokLess then
   begin
-    FormatTypeParams;
-//    if Scaner.Token = tokDot then
-//      FormatIdent;
+    GreatEqual := FormatTypeParams(0, True);
   end;
 
-  MatchOperator(tokEQUAL);
+  if not GreatEqual then
+    MatchOperator(tokEQUAL);
 
   if Scaner.Token = tokKeywordType then // 处理 TInt = type Integer; 的情形
     Match(tokKeywordType);
@@ -4180,16 +4220,25 @@ begin
 end;
 
 procedure TCnBasePascalFormatter.FormatProgramInnerBlock(PreSpaceCount: Byte;
-  IsInternal: Boolean);
+  IsInternal: Boolean; IsLib: Boolean);
+var
+  HasDeclSection: Boolean;
 begin
+  HasDeclSection := False;
   while Scaner.Token in DeclSectionTokens do
   begin
     FormatDeclSection(PreSpaceCount, False, IsInternal);
     Writeln;
+    HasDeclSection := True;
   end;
 
-  Writeln;
-  FormatCompoundStmt(PreSpaceCount);
+  if HasDeclSection then // 有声明才多换行，避免多出连续空行
+    Writeln;
+
+  if IsLib and (Scaner.Token = tokKeywordEnd) then // Library 允许直接 end
+    Match(Scaner.Token)
+  else
+    FormatCompoundStmt(PreSpaceCount);
 end;
 
 {
@@ -4549,14 +4598,14 @@ end;
   ProgramBlock -> [UsesClause]
                   Block
 }
-procedure TCnProgramBlockFormatter.FormatProgramBlock(PreSpaceCount: Byte);
+procedure TCnProgramBlockFormatter.FormatProgramBlock(PreSpaceCount: Byte; IsLib: Boolean);
 begin
   if Scaner.Token = tokKeywordUses then
   begin
     FormatUsesClause(PreSpaceCount, True); // 带 IN 的，需要分行
     WriteLine;
   end;
-  FormatProgramInnerBlock(PreSpaceCount);
+  FormatProgramInnerBlock(PreSpaceCount, False, IsLib);
 end;
 
 procedure TCnProgramBlockFormatter.FormatPackageBlock(PreSpaceCount: Byte);
@@ -4920,7 +4969,7 @@ begin
   Match(tokSemicolon);
   WriteLine;
 
-  FormatProgramBlock(PreSpaceCount);
+  FormatProgramBlock(PreSpaceCount, True);
   Match(tokDot);
 end;
 
@@ -5016,21 +5065,26 @@ end;
 
 procedure TCnBasePascalFormatter.FormatClassField(PreSpaceCount: Byte);
 begin
-  FormatClassVarIdentList(PreSpaceCount);
-  Match(tokColon);
-  FormatType(PreSpaceCount);
-
-  while Scaner.Token = tokSemicolon do
-  begin
-    Match(Scaner.Token);
-
-    if Scaner.Token <> tokSymbol then Exit;
-
-    Writeln;
-
+  SpecifyElementType(pfetClassField);
+  try
     FormatClassVarIdentList(PreSpaceCount);
     Match(tokColon);
     FormatType(PreSpaceCount);
+
+    while Scaner.Token = tokSemicolon do
+    begin
+      Match(Scaner.Token);
+
+      if Scaner.Token <> tokSymbol then Exit;
+
+      Writeln;
+
+      FormatClassVarIdentList(PreSpaceCount);
+      Match(tokColon);
+      FormatType(PreSpaceCount);
+    end;
+  finally
+    RestoreElementType;
   end;
 end;
 
@@ -5532,14 +5586,21 @@ end;
 function TCnAbstractCodeFormatter.CalcNeedPadding: Boolean;
 begin
   Result := (FElementType in [pfetExpression, pfetEnumList,pfetArrayConstant,
-    pfetSetConstructor, pfetFormalParameters, pfetUsesList,
-    pfetThen, pfetDo, pfetExprListRightBracket])
+    pfetSetConstructor, pfetFormalParameters, pfetUsesList, pfetFieldDecl, pfetClassField,
+    pfetThen, pfetDo, pfetExprListRightBracket, pfetFormalParametersRightBracket])
     or ((FElementType in [pfetConstExpr]) and not UpperContainElementType([pfetCaseLabel])) // Case Label 的无需跟随上面一行注释缩进
     or UpperContainElementType([pfetFormalParameters, pfetArrayConstant]);
   // 暂且表达式内部与枚举定义内部等一系列元素内部，或者在参数列表、uses 中
   // 碰到注释导致的换行时，才要求自动和上一行对齐
   // 还要求在本来不换行的组合语句里，比如 if then ，while do 里，for do 里
   // 严格来讲 then/do 这种还不同，不需要进一步缩进，不过暂时当作进一步缩进处理。
+end;
+
+function TCnAbstractCodeFormatter.CalcNeedPaddingAndUnIndent: Boolean;
+begin
+  Result := FElementType in [pfetExprListRightBracket, pfetFormalParametersRightBracket,
+    pfetFieldDecl, pfetClassField];
+  // 在 CalcNeedPadding 为 True 的前提下，以上要反缩进
 end;
 
 function TCnAbstractCodeFormatter.UpperContainElementType(ElementTypes:
@@ -5575,6 +5636,12 @@ begin
   FEnsureOneEmptyLine := True;
   Writeln;
   FEnsureOneEmptyLine := False;
+end;
+
+function TCnAbstractCodeFormatter.CurrentContainElementType(
+  ElementTypes: TCnPascalFormattingElementTypeSet): Boolean;
+begin
+  Result := (FElementType in ElementTypes) or UpperContainElementType(ElementTypes);
 end;
 
 initialization

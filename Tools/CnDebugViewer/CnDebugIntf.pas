@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                       CnPack For Delphi/C++Builder                           }
 {                     中国人自己的开放源码第三方开发包                         }
-{                   (C)Copyright 2001-2015 CnPack 开发组                       }
+{                   (C)Copyright 2001-2016 CnPack 开发组                       }
 {                   ------------------------------------                       }
 {                                                                              }
 {            本开发包是开源的自由软件，您可以遵照 CnPack 的发布协议来修        }
@@ -48,7 +48,7 @@ const
   CnDebugMagicLength = 8;
   CnDebugMapEnabled = $7F3D92E0; // 随便定义的一个值表示 MapEnable
   CnDebugMagicName = 'CNDEBUG';
-  
+
   SCnDebugPrefix = 'Global\';
 
 var
@@ -132,12 +132,14 @@ procedure ReInitLocalConsts;
 implementation
 
 procedure ReInitLocalConsts;
+const
+  SCnDebugLocalPrefix = 'Local\';
 begin
-  SCnDebugMapName := 'CnDebugMap';
-  SCnDebugQueueEventName := 'CnDebugQueueEvent';
-  SCnDebugQueueMutexName := 'CnDebugQueueMutex';
-  SCnDebugStartEventName := 'CnDebugStartEvent';
-  SCnDebugFlushEventName := 'CnDebugFlushEvent';
+  SCnDebugMapName := SCnDebugLocalPrefix + 'CnDebugMap';
+  SCnDebugQueueEventName := SCnDebugLocalPrefix + 'CnDebugQueueEvent';
+  SCnDebugQueueMutexName := SCnDebugLocalPrefix + 'CnDebugQueueMutex';
+  SCnDebugStartEventName := SCnDebugLocalPrefix + 'CnDebugStartEvent';
+  SCnDebugFlushEventName := SCnDebugLocalPrefix + 'CnDebugFlushEvent';
 end;
 
 end.
